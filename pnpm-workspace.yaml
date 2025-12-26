@@ -1,0 +1,6 @@
+packages:
+  - 'contracts'
+  - 'core/*'
+  - 'product-deals/*'
+  - 'web-home'
+  - 'ios-home'
