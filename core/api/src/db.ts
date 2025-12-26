@@ -19,7 +19,7 @@ export interface WidgetKey {
 }
 
 export interface Widget extends WidgetKey {
-    content: any;
+    content: Record<string, unknown>;
     schema_version: number;
     data_version: number;
 }

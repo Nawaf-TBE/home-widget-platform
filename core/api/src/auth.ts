@@ -1,5 +1,6 @@
-import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import { Response, NextFunction } from 'express';
+import jwt, { JwtPayload, VerifyErrors } from 'jsonwebtoken';
+import { Request } from 'express';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key';
 
@@ -15,12 +16,12 @@ export const authenticateJWT = (req: AuthRequest, res: Response, next: NextFunct
 
     if (authHeader) {
         const token = authHeader.split(' ')[1];
-        jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
+        jwt.verify(token, JWT_SECRET, (err: VerifyErrors | null, user: JwtPayload | string | undefined) => {
             if (err) {
                 return res.sendStatus(403);
             }
 
-            req.user = user;
+            req.user = user as { id: string; role: string };
             next();
         });
     } else {

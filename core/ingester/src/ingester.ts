@@ -1,10 +1,22 @@
 import { redisClient, connectRedis } from './redis';
-import { upsertWidget, pool } from './db';
+import { upsertWidget } from './db';
 import { validateEvent } from './validation';
 
 const STREAM_KEY = 'events';
 const GROUP_NAME = 'core';
 const CONSUMER_NAME = process.env.CONSUMER_NAME || 'core-1';
+
+interface EventPayload {
+    product_id: string;
+    platform: string;
+    audience_type: string;
+    audience_id: string;
+    widget_key: string;
+    content: Record<string, unknown>;
+    schema_version: number;
+    data_version: number;
+    min_ios_version?: number;
+}
 
 export const startIngester = async () => {
     await connectRedis();
@@ -13,8 +25,8 @@ export const startIngester = async () => {
     try {
         await redisClient.xGroupCreate(STREAM_KEY, GROUP_NAME, '0', { MKSTREAM: true });
         console.log(`Created consumer group ${GROUP_NAME}`);
-    } catch (err: any) {
-        if (!err.message.includes('BUSYGROUP')) {
+    } catch (err: unknown) {
+        if (err instanceof Error && !err.message.includes('BUSYGROUP')) {
             throw err;
         }
         // Group already exists, ignore
@@ -36,9 +48,8 @@ const processStream = async () => {
             );
 
             if (response && Array.isArray(response) && response.length > 0) {
-                // Force cast to any to avoid complex redis type issues in this step
-                const streamEntry: any = (response[0] as any).messages[0];
-                await processMessage(streamEntry.id, streamEntry.message);
+                const streamEntry = response[0].messages[0];
+                await processMessage(streamEntry.id, streamEntry.message as Record<string, string>);
             }
         } catch (err) {
             console.error('Error processing stream:', err);
@@ -67,7 +78,7 @@ const processPending = async () => {
                 console.log(`Reclaimed ${response.messages.length} pending messages`);
                 for (const msg of response.messages) {
                     if (msg) {
-                        await processMessage(msg.id, msg.message);
+                        await processMessage(msg.id, msg.message as Record<string, string>);
                     }
                 }
             }
@@ -77,20 +88,12 @@ const processPending = async () => {
     }
 };
 
-export const processMessage = async (id: string, message: any) => {
+export const processMessage = async (id: string, message: Record<string, string>) => {
     try {
-        // Redis Streams returns everything as strings. 
-        // We typically expect a "data" field containing the JSON, or fields directly.
-        // Let's assume the payload comes in a field named "data" or we try to parse the whole object if standard fields aren't there.
-        // Based on typical patterns, let's look for a 'payload' or 'data' field, or just try to reconstruct.
-        // For this project, let's assume the event is stored as a JSON string in a field called 'event' or just flattened fields.
-        // BUT, xAdd usually takes field-value pairs. 
-        // Let's assume the producer sends "event" -> JSON string.
-
-        let eventData: any;
+        let eventData: EventPayload;
         const rawPayload = message.event || message.payload;
         if (rawPayload) {
-            eventData = JSON.parse(rawPayload);
+            eventData = JSON.parse(rawPayload) as EventPayload;
         } else {
             console.error(`Message ${id} missing 'event' or 'payload' field`, message);
             return; // Do not ACK
@@ -102,36 +105,32 @@ export const processMessage = async (id: string, message: any) => {
             return; // Do not ACK
         }
 
-        // Extract Widget Data
-        // Schema is flat: { product_id, platform, ..., content: { ... } }
-        const payload: any = eventData;
-
         // Upsert to DB
         await upsertWidget({
-            product_id: payload.product_id,
-            platform: payload.platform,
-            audience_type: payload.audience_type,
-            audience_id: payload.audience_id,
-            widget_key: payload.widget_key,
-            content: payload.content,
-            schema_version: payload.schema_version,
-            data_version: payload.data_version
+            product_id: eventData.product_id,
+            platform: eventData.platform,
+            audience_type: eventData.audience_type,
+            audience_id: eventData.audience_id,
+            widget_key: eventData.widget_key,
+            content: eventData.content,
+            schema_version: eventData.schema_version,
+            data_version: eventData.data_version
         });
 
         // Update Cache
-        const cacheKey = `widget:${payload.product_id}:${payload.platform}:${payload.audience_type}:${payload.audience_id}:${payload.widget_key}`;
+        const cacheKey = `widget:${eventData.product_id}:${eventData.platform}:${eventData.audience_type}:${eventData.audience_id}:${eventData.widget_key}`;
 
         // Cache value
         const cacheValue = {
-            product_id: payload.product_id,
-            platform: payload.platform,
-            audience_type: payload.audience_type,
-            audience_id: payload.audience_id,
-            widget_key: payload.widget_key,
-            content: payload.content,
-            schema_version: payload.schema_version,
-            data_version: payload.data_version,
-            min_ios_version: payload.min_ios_version
+            product_id: eventData.product_id,
+            platform: eventData.platform,
+            audience_type: eventData.audience_type,
+            audience_id: eventData.audience_id,
+            widget_key: eventData.widget_key,
+            content: eventData.content,
+            schema_version: eventData.schema_version,
+            data_version: eventData.data_version,
+            min_ios_version: eventData.min_ios_version
         };
 
         const ttl = parseInt(process.env.REDIS_WIDGET_TTL_SECONDS || '604800');

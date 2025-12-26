@@ -57,4 +57,50 @@ pnpm -w demo:failure:ingester
 - **API Docs**: `https://api-docs.home-widget.check24.de`
 
 ---
+
+## Release Checklist
+
+### Before Submission
+Run these commands to ensure everything passes on a clean slate:
+
+```bash
+# 1. Clean Docker environment
+docker compose down -v
+docker compose up --build -d
+
+# 2. Lint all packages
+pnpm lint
+
+# 3. Unit Tests
+pnpm test
+
+# 4. Integration Tests
+pnpm test:integration
+
+# 5. Failure Demos (Optional)
+pnpm demo:failure:product
+pnpm demo:failure:redis
+pnpm demo:failure:ingester
+```
+
+### Live URLs to Fill
+| Environment | URL |
+|---|---|
+| Staging | `https://staging.home-widget.check24.de` |
+| Production | `https://home-widget.check24.de` |
+| API Docs | `https://api-docs.home-widget.check24.de` |
+
+### Reproducing Demo Steps Quickly
+1. **Start System**: `docker compose up --build -d`
+2. **Open Web Home**: Navigate to `http://localhost:3002`
+3. **Login**: Enter any user ID
+4. **Save a Deal**: Click "Save" on any deal card
+5. **Verify Personalization**: Reload the home screen; your saved deal appears
+
+### Building & Running iOS App
+1. Open Xcode: `open ios-home/ios-home.xcodeproj`
+2. Select an iOS 16+ simulator
+3. Press **Run**
+
+---
 *Built for the Advanced Agentic Coding Challenge.*

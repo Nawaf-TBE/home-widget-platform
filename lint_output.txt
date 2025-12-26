@@ -1,0 +1,21 @@
+
+> home-widget-platform@ lint /Users/nawaf/Desktop/check24/home-widget-platform
+> pnpm -r lint
+
+Scope: 8 of 9 workspace projects
+contracts lint$ eslint .
+product-deals/api lint$ eslint src/**/*.ts
+product-deals/outbox-worker lint$ eslint src/**/*.ts
+contracts lint: /Users/nawaf/Desktop/check24/home-widget-platform/contracts/jest.config.js
+contracts lint:   1:20  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+contracts lint: ✖ 1 problem (1 error, 0 warnings)
+contracts lint: Failed
+/Users/nawaf/Desktop/check24/home-widget-platform/contracts:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @home-widget-platform/contracts@1.0.0 lint: `eslint .`
+Exit status 1
+product-deals/api lint: /Users/nawaf/Desktop/check24/home-widget-platform/product-deals/api/src/api.test.ts
+product-deals/api lint:   85:15  error  'ver' is assigned a value but never used  @typescript-eslint/no-unused-vars
+product-deals/api lint: ✖ 1 problem (1 error, 0 warnings)
+product-deals/api lint: Failed
+product-deals/outbox-worker lint: Done
+ ELIFECYCLE  Command failed with exit code 1.

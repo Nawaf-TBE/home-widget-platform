@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express, { Response } from 'express';
 import { authenticateJWT, AuthRequest } from './auth';
 import { pool, getWidget, WidgetKey, Widget } from './db';
 import { redisClient, connectRedis } from './redis';
@@ -7,11 +7,11 @@ export const app = express();
 app.use(express.json());
 const port = process.env.PORT || 3000;
 
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
     res.json({ status: 'ok' });
 });
 
-app.use((req, res, next) => {
+app.use((req, _res, next) => {
     console.log(`[CORE-API-DEBUG] ${req.method} ${req.url}`);
     next();
 });
@@ -149,15 +149,14 @@ v1Router.post('/internal/widgets', authenticateJWT, async (req: AuthRequest, res
         await redisClient.del(cacheKey);
 
         res.status(201).json({ status: 'success' });
-    } catch (err) {
+    } catch {
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 
 app.use('/v1', v1Router);
 
-let server: any;
-server = app.listen(port, () => {
+const server = app.listen(port, () => {
     console.log(`Core API listening at http://localhost:${port}`);
 });
 

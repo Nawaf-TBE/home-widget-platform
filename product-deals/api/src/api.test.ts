@@ -5,7 +5,7 @@ import { generateToken } from './auth';
 
 describe('Product Deals API Integration', () => {
     let authToken: string;
-    let userId = 'test-user-123';
+    const userId = 'test-user-123';
     let dealId: string;
 
     beforeAll(async () => {
@@ -82,7 +82,7 @@ describe('Product Deals API Integration', () => {
         expect(saved.rows.length).toBe(0);
 
         // Check widget_versions incremented
-        const ver = await query('SELECT * FROM widget_versions WHERE user_id = $1', [userId]);
+        await query('SELECT * FROM widget_versions WHERE user_id = $1', [userId]);
         // Check Outbox - should have added 2 more (total 4 now)
         const outbox = await query('SELECT * FROM outbox');
         expect(outbox.rows.length).toBe(4);

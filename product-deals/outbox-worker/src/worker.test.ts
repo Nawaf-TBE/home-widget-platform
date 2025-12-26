@@ -13,7 +13,7 @@ const DB_CONFIG = {
 
 describe('Outbox Worker Integration', () => {
     let pool: Pool;
-    let redisClient: any;
+    let redisClient: ReturnType<typeof createClient>;
 
     beforeAll(async () => {
         pool = new Pool(DB_CONFIG);
@@ -31,7 +31,9 @@ describe('Outbox Worker Integration', () => {
         // Clear redis stream
         try {
             await redisClient.del('events');
-        } catch (e) { }
+        } catch {
+            // Ignore if key doesn't exist
+        }
     });
 
     it('processes outbox row and marks as published', async () => {

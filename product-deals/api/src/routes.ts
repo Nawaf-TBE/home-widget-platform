@@ -20,7 +20,7 @@ router.get('/deals', async (req, res) => {
     try {
         const result = await query('SELECT * FROM deals ORDER BY created_at DESC');
         res.json(result.rows);
-    } catch (err) {
+    } catch {
         res.status(500).json({ error: 'Database error' });
     }
 });
@@ -38,7 +38,7 @@ const generateSnapshot = async (userId: string) => {
     const deals = savedRes.rows;
 
     // 2. Build Root Payload (Generic)
-    const items: any[] = deals.map(d => ({
+    const items: unknown[] = deals.map(d => ({
         type: 'text_row',
         text: `${d.title} - $${d.price}`
     }));
@@ -267,7 +267,7 @@ router.get('/me/saved', authenticateJWT, async (req, res) => {
             WHERE s.user_id = $1
         `, [userId]);
         res.json(result.rows);
-    } catch (err) {
+    } catch {
         res.status(500).json({ error: 'Database error' });
     }
 });

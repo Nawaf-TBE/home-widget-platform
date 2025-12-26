@@ -15,7 +15,7 @@ const DB_CONFIG = {
 const STREAM_KEY = 'events';
 
 // Main processing logic for a single batch
-export const processIteration = async (redisClient: any, pool: Pool) => {
+export const processIteration = async (redisClient: { xAdd: (key: string, id: string, data: Record<string, string>) => Promise<string> }, pool: Pool) => {
     let client;
     let jobIds: number[] = [];
 
@@ -59,15 +59,16 @@ export const processIteration = async (redisClient: any, pool: Pool) => {
         client.release();
         return { processed: jobIds.length, shouldSleep: false };
 
-    } catch (err: any) {
+    } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
         console.error('Worker Error:', err);
 
         if (client) {
             try {
                 await client.query('ROLLBACK');
                 client.release();
-            } catch (e) {
-                console.error('Rollback error:', e);
+            } catch {
+                // Log is already in runIteration if it throws, or we can add here
             }
         }
 
@@ -81,14 +82,14 @@ export const processIteration = async (redisClient: any, pool: Pool) => {
                         last_error = $2,
                         failed_at = CASE WHEN retry_count + 1 > 5 THEN NOW() ELSE NULL END
                     WHERE id = ANY($1)
-                `, [jobIds, err.message]);
+                `, [jobIds, errorMessage]);
                 retryClient.release();
                 console.log(`Updated retry count for ${jobIds.length} events.`);
             } catch (retryErr) {
                 console.error('Failed to update retry counts:', retryErr);
             }
         }
-        return { error: err.message, shouldSleep: true };
+        return { error: errorMessage, shouldSleep: true };
     }
 };
 
@@ -102,7 +103,7 @@ export const startWorker = async () => {
     console.log('Worker connected to Redis');
 
     while (true) {
-        const result = await processIteration(redisClient as any, pool);
+        const result = await processIteration(redisClient as never, pool);
         if (result.shouldSleep) {
             const sleepTime = result.error ? 5000 : 1000;
             await new Promise(resolve => setTimeout(resolve, sleepTime));
