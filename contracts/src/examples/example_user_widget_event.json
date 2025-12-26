@@ -1,0 +1,26 @@
+{
+    "event_id": "987fcdeb-51a2-43cf-9876-543210987654",
+    "product_id": "home",
+    "platform": "ios",
+    "audience_type": "user",
+    "audience_id": "123",
+    "widget_key": "recommended",
+    "schema_version": 1,
+    "data_version": 2,
+    "min_ios_version": 16,
+    "content": {
+        "schema_version": 1,
+        "data_version": 2,
+        "min_ios_version": 16,
+        "root": {
+            "type": "widget_container",
+            "title": "For You",
+            "items": [
+                {
+                    "type": "text_row",
+                    "text": "Based on your history"
+                }
+            ]
+        }
+    }
+}

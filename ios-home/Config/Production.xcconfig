@@ -1,0 +1,2 @@
+CORE_BASE_URL = https://core.example.com
+PRODUCT_BASE_URL = https://product.example.com

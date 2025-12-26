@@ -1,0 +1,7 @@
+{
+    "name": "@home-widget-platform/e2e",
+    "private": true,
+    "scripts": {
+        "test:integration": "jest --config jest.config.js"
+    }
+}

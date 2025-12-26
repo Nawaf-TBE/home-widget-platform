@@ -1,0 +1,23 @@
+{
+    "name": "@home-widget-platform/core-ingester",
+    "version": "1.0.0",
+    "scripts": {
+        "build": "tsc",
+        "test": "jest",
+        "lint": "eslint .",
+        "start": "node dist/index.js"
+    },
+    "dependencies": {
+        "@home-widget-platform/contracts": "workspace:*",
+        "ajv": "^8.17.1",
+        "ajv-formats": "^3.0.1",
+        "dotenv": "^17.2.3",
+        "pg": "^8.11.0",
+        "redis": "^5.10.0"
+    },
+    "devDependencies": {
+        "@types/node": "^20.19.27",
+        "@types/pg": "^8.10.0",
+        "ts-jest": "^29.4.6"
+    }
+}

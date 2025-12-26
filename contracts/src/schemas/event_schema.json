@@ -1,0 +1,58 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "http://home-widget-platform/schemas/event.json",
+    "type": "object",
+    "required": [
+        "event_id",
+        "product_id",
+        "platform",
+        "audience_type",
+        "audience_id",
+        "widget_key",
+        "schema_version",
+        "data_version",
+        "content"
+    ],
+    "additionalProperties": false,
+    "properties": {
+        "event_id": {
+            "type": "string",
+            "format": "uuid"
+        },
+        "product_id": {
+            "type": "string"
+        },
+        "platform": {
+            "type": "string",
+            "enum": [
+                "web",
+                "ios"
+            ]
+        },
+        "audience_type": {
+            "type": "string",
+            "enum": [
+                "user",
+                "default"
+            ]
+        },
+        "audience_id": {
+            "type": "string"
+        },
+        "widget_key": {
+            "type": "string"
+        },
+        "schema_version": {
+            "type": "integer"
+        },
+        "data_version": {
+            "type": "integer"
+        },
+        "min_ios_version": {
+            "type": "integer"
+        },
+        "content": {
+            "$ref": "widget.json"
+        }
+    }
+}

@@ -1,0 +1,16 @@
+{
+    "name": "@home-widget-platform/contracts",
+    "version": "1.0.0",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "scripts": {
+        "build": "tsc",
+        "lint": "eslint .",
+        "test": "jest"
+    },
+    "devDependencies": {
+        "ajv": "^8.17.1",
+        "ajv-formats": "^3.0.1",
+        "typescript": "^5.0.0"
+    }
+}

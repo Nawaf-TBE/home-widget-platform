@@ -1,0 +1,100 @@
+version: '3.8'
+services:
+  redis:
+    image: redis:alpine
+    ports:
+      - "6380:6379"
+
+  postgres-core:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: core
+    ports:
+      - "5434:5432"
+
+  postgres-product:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: product
+    ports:
+      - "5435:5432"
+
+  core-ingester:
+    build:
+      context: .
+      dockerfile: core/ingester/Dockerfile
+    environment:
+      - DB_HOST=postgres-core
+      - DB_PORT=5432
+      - DB_NAME=core
+      - DB_USER=user
+      - DB_PASSWORD=password
+      - REDIS_URL=redis://redis:6379
+      - CONSUMER_NAME=core-ingester
+    depends_on:
+      - redis
+      - postgres-core
+
+  core-api:
+    build:
+      context: .
+      dockerfile: core/api/Dockerfile
+    environment:
+      - DB_HOST=postgres-core
+      - DB_PORT=5432
+      - DB_NAME=core
+      - DB_USER=user
+      - DB_PASSWORD=password
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=dev-secret
+    ports:
+      - "3003:3000"
+    depends_on:
+      - redis
+      - postgres-core
+
+  product-deals-api:
+    build:
+      context: .
+      dockerfile: product-deals/api/Dockerfile
+    environment:
+      - DB_HOST=postgres-product
+      - DB_PORT=5432
+      - DB_NAME=product
+      - DB_USER=user
+      - DB_PASSWORD=password
+      - JWT_SECRET=dev-secret
+      - PORT=3000
+    ports:
+      - "3001:3000"
+    depends_on:
+      - postgres-product
+
+  product-deals-outbox-worker:
+    build:
+      context: .
+      dockerfile: product-deals/outbox-worker/Dockerfile
+    environment:
+      - DB_HOST=postgres-product
+      - DB_PORT=5432
+      - DB_NAME=product
+      - DB_USER=user
+      - DB_PASSWORD=password
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+      - postgres-product
+
+  web-home:
+    build:
+      context: .
+      dockerfile: web-home/Dockerfile
+    ports:
+      - "3002:3002"
+    depends_on:
+      - core-api
+      - product-deals-api

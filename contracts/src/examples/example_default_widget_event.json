@@ -1,0 +1,29 @@
+{
+    "event_id": "123e4567-e89b-12d3-a456-426614174000",
+    "product_id": "home",
+    "platform": "web",
+    "audience_type": "default",
+    "audience_id": "global",
+    "widget_key": "top_deals",
+    "schema_version": 1,
+    "data_version": 1,
+    "content": {
+        "schema_version": 1,
+        "data_version": 1,
+        "root": {
+            "type": "widget_container",
+            "title": "Top Deals",
+            "items": [
+                {
+                    "type": "text_row",
+                    "text": "Best deals of the day"
+                },
+                {
+                    "type": "action_button",
+                    "label": "View All",
+                    "deeplink": "/deals"
+                }
+            ]
+        }
+    }
+}

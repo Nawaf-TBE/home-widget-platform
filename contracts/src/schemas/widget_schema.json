@@ -1,0 +1,99 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "http://home-widget-platform/schemas/widget.json",
+    "type": "object",
+    "required": [
+        "schema_version",
+        "data_version",
+        "root"
+    ],
+    "additionalProperties": false,
+    "properties": {
+        "schema_version": {
+            "type": "integer"
+        },
+        "data_version": {
+            "type": "integer"
+        },
+        "min_ios_version": {
+            "type": "integer"
+        },
+        "root": {
+            "$ref": "#/definitions/widget_container"
+        }
+    },
+    "definitions": {
+        "component": {
+            "oneOf": [
+                {
+                    "$ref": "#/definitions/widget_container"
+                },
+                {
+                    "$ref": "#/definitions/text_row"
+                },
+                {
+                    "$ref": "#/definitions/action_button"
+                }
+            ]
+        },
+        "widget_container": {
+            "type": "object",
+            "required": [
+                "type",
+                "title",
+                "items"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "const": "widget_container"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/component"
+                    }
+                }
+            }
+        },
+        "text_row": {
+            "type": "object",
+            "required": [
+                "type",
+                "text"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "const": "text_row"
+                },
+                "text": {
+                    "type": "string"
+                }
+            }
+        },
+        "action_button": {
+            "type": "object",
+            "required": [
+                "type",
+                "label",
+                "deeplink"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "const": "action_button"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "deeplink": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

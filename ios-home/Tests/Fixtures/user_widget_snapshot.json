@@ -1,0 +1,30 @@
+{
+    "product_id": "deals_app",
+    "platform": "ios",
+    "audience_type": "user",
+    "audience_id": "user-1",
+    "widget_key": "top_deals",
+    "content": {
+        "schema_version": 1,
+        "data_version": 5,
+        "root": {
+            "type": "widget_container",
+            "title": "TOP DEALS",
+            "items": [
+                {
+                    "type": "text_row",
+                    "text": "Exclusive Discounts for You!"
+                },
+                {
+                    "type": "action_button",
+                    "label": "View All",
+                    "deeplink": "https://example.com/deals"
+                },
+                {
+                    "type": "mystery_component",
+                    "data": "Ignore me"
+                }
+            ]
+        }
+    }
+}
