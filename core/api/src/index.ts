@@ -19,6 +19,8 @@ app.use((req, res, next) => {
 
 const v1Router = express.Router();
 
+const WIDGET_TTL = parseInt(process.env.REDIS_WIDGET_TTL_SECONDS || '3600');
+
 /**
  * Endpoint: POST /v1/widgets/delivery
  * Request: { keys: WidgetKey[] }
@@ -65,7 +67,7 @@ v1Router.post('/widgets/delivery', authenticateJWT, async (req: AuthRequest, res
 
                     // Update Cache
                     const cacheKey = `widget:${widget.product_id}:${widget.platform}:${widget.audience_type}:${widget.audience_id}:${widget.widget_key}`;
-                    await redisClient.setEx(cacheKey, 3600, JSON.stringify(widget));
+                    await redisClient.setEx(cacheKey, WIDGET_TTL, JSON.stringify(widget));
                     return widget;
                 }
                 return null;
@@ -155,38 +157,9 @@ v1Router.post('/internal/widgets', authenticateJWT, async (req: AuthRequest, res
 app.use('/v1', v1Router);
 
 let server: any;
-if (process.env.NODE_ENV !== 'test') {
-    // Simple way to run migrations in this demo
-    const runMigrations = () => {
-        let retries = 5;
-        while (retries > 0) {
-            try {
-                console.log('Running migrations...');
-                // Use environment variables directly for the URL
-                const dbUrl = `postgres://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`;
-                const { execSync } = require('child_process');
-                execSync('pnpm migrate up', {
-                    env: { ...process.env, DATABASE_URL: dbUrl },
-                    stdio: 'inherit'
-                });
-                console.log('Migrations completed successfully');
-                break;
-            } catch (err) {
-                retries--;
-                console.error(`Migration failed (retries left: ${retries}):`, err);
-                if (retries === 0) throw err;
-                // Wait 2 seconds before retry using a busy wait for simplicity in this script
-                const start = Date.now();
-                while (Date.now() - start < 2000) { }
-            }
-        }
-    };
-    runMigrations();
-
-    server = app.listen(port, () => {
-        console.log(`Core API listening at http://localhost:${port}`);
-    });
-}
+server = app.listen(port, () => {
+    console.log(`Core API listening at http://localhost:${port}`);
+});
 
 export { server };
 

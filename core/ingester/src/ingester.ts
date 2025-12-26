@@ -134,7 +134,8 @@ export const processMessage = async (id: string, message: any) => {
             min_ios_version: payload.min_ios_version
         };
 
-        await redisClient.setEx(cacheKey, 7 * 24 * 60 * 60, JSON.stringify(cacheValue));
+        const ttl = parseInt(process.env.REDIS_WIDGET_TTL_SECONDS || '604800');
+        await redisClient.setEx(cacheKey, ttl, JSON.stringify(cacheValue));
 
         // ACK
         await redisClient.xAck(STREAM_KEY, GROUP_NAME, id);

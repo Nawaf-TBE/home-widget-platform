@@ -4,24 +4,61 @@ services:
     image: redis:alpine
     ports:
       - "6380:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   postgres-core:
     image: postgres:15-alpine
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: core
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=core
     ports:
       - "5434:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U user -d core" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   postgres-product:
     image: postgres:15-alpine
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: product
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=product
     ports:
       - "5435:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U user -d product" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  core-migrate:
+    build:
+      context: .
+      dockerfile: core/api/Dockerfile
+    environment:
+      - DATABASE_URL=postgres://user:password@postgres-core:5432/core
+    command: [ "pnpm", "migrate", "up" ]
+    depends_on:
+      postgres-core:
+        condition: service_healthy
+
+  product-migrate:
+    build:
+      context: .
+      dockerfile: product-deals/api/Dockerfile
+    environment:
+      - DATABASE_URL=postgres://user:password@postgres-product:5432/product
+    command: [ "pnpm", "migrate", "up" ]
+    depends_on:
+      postgres-product:
+        condition: service_healthy
 
   core-ingester:
     build:
@@ -35,10 +72,15 @@ services:
       - DB_PASSWORD=password
       - REDIS_URL=redis://redis:6379
       - CONSUMER_NAME=core-ingester
+      - REDIS_WIDGET_TTL_SECONDS=604800
+      - STREAM_NAME=events
+      - CONSUMER_GROUP=core
     restart: always
     depends_on:
-      - redis
-      - postgres-core
+      core-migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
 
   core-api:
     build:
@@ -52,11 +94,20 @@ services:
       - DB_PASSWORD=password
       - REDIS_URL=redis://redis:6379
       - JWT_SECRET=dev-secret
+      - REDIS_WIDGET_TTL_SECONDS=3600
     ports:
       - "3003:3000"
     depends_on:
-      - redis
-      - postgres-core
+      core-migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
 
   product-deals-api:
     build:
@@ -70,10 +121,20 @@ services:
       - DB_PASSWORD=password
       - JWT_SECRET=dev-secret
       - PORT=3000
+      - REDIS_URL=redis://redis:6379
     ports:
       - "3001:3000"
     depends_on:
-      - postgres-product
+      product-migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
 
   product-deals-outbox-worker:
     build:
@@ -86,10 +147,13 @@ services:
       - DB_USER=user
       - DB_PASSWORD=password
       - REDIS_URL=redis://redis:6379
+      - STREAM_NAME=events
     restart: always
     depends_on:
-      - redis
-      - postgres-product
+      product-migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
 
   web-home:
     build:
@@ -98,5 +162,7 @@ services:
     ports:
       - "3002:3002"
     depends_on:
-      - core-api
-      - product-deals-api
+      core-api:
+        condition: service_healthy
+      product-deals-api:
+        condition: service_healthy
