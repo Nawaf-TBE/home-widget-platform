@@ -88,12 +88,11 @@ export const processMessage = async (id: string, message: any) => {
         // Let's assume the producer sends "event" -> JSON string.
 
         let eventData: any;
-        if (message.event) {
-            eventData = JSON.parse(message.event);
+        const rawPayload = message.event || message.payload;
+        if (rawPayload) {
+            eventData = JSON.parse(rawPayload);
         } else {
-            // Fallback: try to treat the message itself as the object if fields match?
-            // But simpler to assume strict contract: XADD events * event <JSON>
-            console.error(`Message ${id} missing 'event' field`, message);
+            console.error(`Message ${id} missing 'event' or 'payload' field`, message);
             return; // Do not ACK
         }
 

@@ -5,6 +5,9 @@
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
     "test:integration": "pnpm -r test:integration",
+    "demo:failure:product": "pnpm --filter @home-widget-platform/failure-demos run test -- product-down.test.ts",
+    "demo:failure:redis": "pnpm --filter @home-widget-platform/failure-demos run test -- redis-down.test.ts",
+    "demo:failure:ingester": "pnpm --filter @home-widget-platform/failure-demos run test -- ingester-restart.test.ts",
     "up": "docker compose up -d",
     "down": "docker compose down"
   },

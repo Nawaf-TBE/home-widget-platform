@@ -96,6 +96,8 @@ export const startWorker = async () => {
     const redisClient = createClient({ url: REDIS_URL });
     const pool = new Pool(DB_CONFIG);
 
+    redisClient.on('error', (err) => console.error('Redis Client Error', err));
+
     await redisClient.connect();
     console.log('Worker connected to Redis');
 
