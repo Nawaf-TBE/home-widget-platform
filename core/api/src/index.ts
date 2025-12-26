@@ -1,9 +1,11 @@
 import express, { Response } from 'express';
+import cors from 'cors';
 import { authenticateJWT, AuthRequest } from './auth';
 import { pool, getWidget, WidgetKey, Widget } from './db';
 import { redisClient, connectRedis } from './redis';
 
 export const app = express();
+app.use(cors());
 app.use(express.json());
 const port = process.env.PORT || 3000;
 

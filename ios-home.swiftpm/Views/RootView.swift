@@ -15,12 +15,3 @@ struct RootView: View {
         }
     }
 }
-
-@main
-struct HomeApp: App {
-    var body: some Scene {
-        WindowGroup {
-            RootView()
-        }
-    }
-}

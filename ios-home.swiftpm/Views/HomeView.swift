@@ -53,9 +53,15 @@ struct HomeView: View {
                 await viewModel.fetchWidgets()
             }
             .toolbar {
+                #if os(iOS)
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Logout") { onLogout() }
                 }
+                #else
+                ToolbarItem(placement: .automatic) {
+                    Button("Logout") { onLogout() }
+                }
+                #endif
             }
             .overlay {
                 if viewModel.isLoading {

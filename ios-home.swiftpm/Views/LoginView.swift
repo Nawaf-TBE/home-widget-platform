@@ -23,7 +23,9 @@ struct LoginView: View {
                     .padding()
                     .background(Color(white: 0.1))
                     .cornerRadius(12)
-                    .autocapitalization(.none)
+                    #if os(iOS)
+                    .textInputAutocapitalization(.never)
+                    #endif
             }
             .padding(.horizontal)
             

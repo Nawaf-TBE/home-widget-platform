@@ -2,7 +2,7 @@ import { Response, NextFunction } from 'express';
 import jwt, { JwtPayload, VerifyErrors } from 'jsonwebtoken';
 import { Request } from 'express';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET || 'platform-secret-2025';
 
 export interface AuthRequest extends Request {
     user?: {

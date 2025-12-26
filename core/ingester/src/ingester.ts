@@ -48,8 +48,12 @@ const processStream = async () => {
             );
 
             if (response && Array.isArray(response) && response.length > 0) {
-                const streamEntry = response[0].messages[0];
-                await processMessage(streamEntry.id, streamEntry.message as Record<string, string>);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const stream = response[0] as any;
+                if (stream && stream.messages && stream.messages.length > 0) {
+                    const streamEntry = stream.messages[0];
+                    await processMessage(streamEntry.id, streamEntry.message as Record<string, string>);
+                }
             }
         } catch (err) {
             console.error('Error processing stream:', err);

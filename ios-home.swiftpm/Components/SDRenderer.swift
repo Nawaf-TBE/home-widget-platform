@@ -3,12 +3,8 @@ import SwiftUI
 struct SDRenderer: View {
     let component: SDUIComponent
     
-    var body: some View {
-        render(component)
-    }
-    
     @ViewBuilder
-    private func render(_ component: SDUIComponent) -> some View {
+    var body: some View {
         switch component.type {
         case "widget_container":
             VStack(alignment: .leading, spacing: 12) {
@@ -20,7 +16,7 @@ struct SDRenderer: View {
                 
                 if let items = component.items {
                     ForEach(0..<items.count, id: \.self) { index in
-                        render(items[index])
+                        SDRenderer(component: items[index])
                     }
                 }
             }
@@ -49,7 +45,6 @@ struct SDRenderer: View {
             }
             
         default:
-            // Skip unknown components
             EmptyView()
         }
     }
@@ -58,8 +53,14 @@ struct SDRenderer: View {
         guard let deeplink = deeplink else { return }
         print("[DEEPLINK] \(deeplink)")
         
-        if let url = URL(string: deeplink), url.scheme?.starts(with: "http") == true {
-            UIApplication.shared.open(url)
+        if let url = URL(string: deeplink) {
+            #if os(iOS)
+            if url.scheme?.starts(with: "http") == true {
+                UIApplication.shared.open(url)
+            }
+            #elseif os(macOS)
+            NSWorkspace.shared.open(url)
+            #endif
         }
     }
 }

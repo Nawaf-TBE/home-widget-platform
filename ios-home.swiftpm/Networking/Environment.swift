@@ -13,12 +13,12 @@ enum AppEnvironment {
     }
     
     static var coreBaseURL: URL {
-        let string = Bundle.main.object(forInfoDictionaryKey: "CORE_BASE_URL") as? String ?? ""
+        let string = Bundle.main.object(forInfoDictionaryKey: "CORE_BASE_URL") as? String ?? "http://localhost:3003"
         return URL(string: string)!
     }
     
     static var productBaseURL: URL {
-        let string = Bundle.main.object(forInfoDictionaryKey: "PRODUCT_BASE_URL") as? String ?? ""
+        let string = Bundle.main.object(forInfoDictionaryKey: "PRODUCT_BASE_URL") as? String ?? "http://localhost:3001"
         return URL(string: string)!
     }
     
