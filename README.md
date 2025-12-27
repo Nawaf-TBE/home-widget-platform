@@ -98,9 +98,44 @@ pnpm demo:failure:ingester
 5. **Verify Personalization**: Reload the home screen; your saved deal appears
 
 ### Building & Running iOS App
-1. Open Xcode: `open ios-home/ios-home.xcodeproj`
-2. Select an iOS 16+ simulator
+1. Open Xcode: `open ios-home.swiftpm`
+2. Select an iOS 16+ simulator or "My Mac"
 3. Press **Run**
+
+---
+
+## Flexibility Demo
+
+Prove "Flexibility in Mind" by changing widget **layout** without touching Core:
+
+### The Contrast
+- **Default Widget** (logged out): Uses **GRID** layout
+- **Personalized Widget** (logged in): Uses **CAROUSEL** layout
+
+### Flip the Layout (Product-Only Change)
+
+1. **Current State**: Personalized uses carousel, default uses grid
+2. **Change Layout**:
+   ```bash
+   # Edit docker-compose.yml
+   # Change: DEALS_WIDGET_LAYOUT_VARIANT=carousel
+   # To:     DEALS_WIDGET_LAYOUT_VARIANT=grid
+   ```
+3. **Restart ONLY Product Services**:
+   ```bash
+   docker compose up -d --no-deps --build product-deals-api product-deals-outbox-worker
+   ```
+4. **Re-publish Default**:
+   ```bash
+   curl -X POST http://localhost:3001/v1/admin/publish-default
+   ```
+5. **Save/Unsave to Bump Version** (for personalized):
+   ```bash
+   curl -X POST http://localhost:3001/v1/deals/1/save -H "Authorization: Bearer $JWT"
+   ```
+6. **Verify**: Personalized now uses GRID, default now uses CAROUSEL
+
+**Core was never touched, never restarted.**
 
 ---
 *Built for the Advanced Agentic Coding Challenge.*

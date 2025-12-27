@@ -23,6 +23,32 @@
         }
     },
     "definitions": {
+        "padding": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "top": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 24
+                },
+                "right": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 24
+                },
+                "bottom": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 24
+                },
+                "left": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 24
+                }
+            }
+        },
         "component": {
             "oneOf": [
                 {
@@ -33,6 +59,18 @@
                 },
                 {
                     "$ref": "#/definitions/action_button"
+                },
+                {
+                    "$ref": "#/definitions/section_header"
+                },
+                {
+                    "$ref": "#/definitions/deal_card"
+                },
+                {
+                    "$ref": "#/definitions/horizontal_carousel"
+                },
+                {
+                    "$ref": "#/definitions/grid"
                 }
             ]
         },
@@ -40,7 +78,6 @@
             "type": "object",
             "required": [
                 "type",
-                "title",
                 "items"
             ],
             "additionalProperties": false,
@@ -49,10 +86,15 @@
                     "const": "widget_container"
                 },
                 "title": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 120
+                },
+                "padding": {
+                    "$ref": "#/definitions/padding"
                 },
                 "items": {
                     "type": "array",
+                    "maxItems": 20,
                     "items": {
                         "$ref": "#/definitions/component"
                     }
@@ -71,7 +113,11 @@
                     "const": "text_row"
                 },
                 "text": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 120
+                },
+                "padding": {
+                    "$ref": "#/definitions/padding"
                 }
             }
         },
@@ -88,10 +134,140 @@
                     "const": "action_button"
                 },
                 "label": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 120
                 },
                 "deeplink": {
                     "type": "string"
+                },
+                "padding": {
+                    "$ref": "#/definitions/padding"
+                }
+            }
+        },
+        "section_header": {
+            "type": "object",
+            "required": [
+                "type",
+                "title"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "const": "section_header"
+                },
+                "title": {
+                    "type": "string",
+                    "maxLength": 120
+                },
+                "subtitle": {
+                    "type": "string",
+                    "maxLength": 120
+                },
+                "icon": {
+                    "type": "string",
+                    "maxLength": 50
+                },
+                "padding": {
+                    "$ref": "#/definitions/padding"
+                }
+            }
+        },
+        "deal_card": {
+            "type": "object",
+            "required": [
+                "type",
+                "title",
+                "image_url",
+                "price",
+                "deeplink"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "const": "deal_card"
+                },
+                "title": {
+                    "type": "string",
+                    "maxLength": 120
+                },
+                "category": {
+                    "type": "string",
+                    "maxLength": 120
+                },
+                "image_url": {
+                    "type": "string",
+                    "format": "uri"
+                },
+                "price": {
+                    "type": "number",
+                    "minimum": 0
+                },
+                "original_price": {
+                    "type": "number",
+                    "minimum": 0
+                },
+                "badge_text": {
+                    "type": "string",
+                    "maxLength": 120
+                },
+                "deeplink": {
+                    "type": "string"
+                },
+                "padding": {
+                    "$ref": "#/definitions/padding"
+                }
+            }
+        },
+        "horizontal_carousel": {
+            "type": "object",
+            "required": [
+                "type",
+                "items"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "const": "horizontal_carousel"
+                },
+                "padding": {
+                    "$ref": "#/definitions/padding"
+                },
+                "items": {
+                    "type": "array",
+                    "maxItems": 12,
+                    "items": {
+                        "$ref": "#/definitions/deal_card"
+                    }
+                }
+            }
+        },
+        "grid": {
+            "type": "object",
+            "required": [
+                "type",
+                "columns",
+                "items"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "const": "grid"
+                },
+                "columns": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 3
+                },
+                "padding": {
+                    "$ref": "#/definitions/padding"
+                },
+                "items": {
+                    "type": "array",
+                    "maxItems": 12,
+                    "items": {
+                        "$ref": "#/definitions/deal_card"
+                    }
                 }
             }
         }

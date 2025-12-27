@@ -5,6 +5,10 @@ import { authenticateJWT, AuthenticatedRequest, generateToken } from './auth';
 
 const router = Router();
 
+// Layout variant: "carousel" | "grid" - controls personalized widget layout
+// Default widget uses OPPOSITE layout for immediate visual contrast
+const LAYOUT_VARIANT = (process.env.DEALS_WIDGET_LAYOUT_VARIANT || 'carousel') as 'carousel' | 'grid';
+
 // Auth Endpoint
 router.post('/auth/login', (req, res) => {
     const { userId } = req.body;
@@ -25,38 +29,93 @@ router.get('/deals', async (req, res) => {
     }
 });
 
-// Helper for snapshots
-const generateSnapshot = async (userId: string) => {
-    // 1. Get Saved Deals
+// Helper: Create deal_card from deal row
+interface DealRow {
+    id: string;
+    title: string;
+    price: number;
+    original_price?: number;
+    category?: string;
+    image_url?: string;
+    badge_text?: string;
+}
+
+const createDealCard = (deal: DealRow) => ({
+    type: 'deal_card',
+    title: deal.title,
+    category: deal.category || 'Deals',
+    image_url: deal.image_url || `https://picsum.photos/seed/${deal.id}/200`,
+    price: parseFloat(String(deal.price)),
+    ...(deal.original_price ? { original_price: parseFloat(String(deal.original_price)) } : {}),
+    ...(deal.badge_text ? { badge_text: deal.badge_text } : {}),
+    deeplink: `app://deals/${deal.id}`
+});
+
+// Helper: Generate personalized snapshot with DealCards
+const generatePersonalizedSnapshot = async (userId: string, layoutVariant: 'carousel' | 'grid') => {
+    // Get Saved Deals
     const savedRes = await query(`
-        SELECT d.id, d.title, d.price 
+        SELECT d.id, d.title, d.price, d.original_price, d.category, d.image_url, d.badge_text
         FROM saved_deals s
         JOIN deals d ON s.deal_id = d.id
         WHERE s.user_id = $1
+        ORDER BY s.created_at DESC
+        LIMIT 12
     `, [userId]);
 
-    const deals = savedRes.rows;
+    const dealCards = savedRes.rows.map((d: DealRow) => createDealCard(d));
 
-    // 2. Build Root Payload (Generic)
-    const items: unknown[] = deals.map(d => ({
-        type: 'text_row',
-        text: `${d.title} - $${d.price}`
-    }));
-
-    // Add header
-    items.unshift({ type: 'text_row', text: 'Top Deals For You' });
-
-    // Add action button
-    items.push({ type: 'action_button', label: 'View All', deeplink: 'app://deals' });
+    // Build layout component based on variant
+    const layoutComponent = layoutVariant === 'carousel'
+        ? { type: 'horizontal_carousel', items: dealCards }
+        : { type: 'grid', columns: 2, items: dealCards };
 
     const root = {
         type: 'widget_container',
         title: 'Your Deals',
-        items: items
+        padding: { top: 16, right: 16, bottom: 16, left: 16 },
+        items: [
+            { type: 'section_header', title: '❤️ Your Saved Top-Deals', subtitle: 'Personalized for you' },
+            layoutComponent,
+            { type: 'action_button', label: 'View All Saved', deeplink: 'app://me/saved' }
+        ]
     };
 
     return root;
-}
+};
+
+// Helper: Generate default snapshot with OPPOSITE layout
+const generateDefaultSnapshot = async (layoutVariant: 'carousel' | 'grid') => {
+    // Get featured deals (first 4 deals as "featured")
+    const dealsRes = await query(`
+        SELECT id, title, price, original_price, category, image_url, badge_text
+        FROM deals
+        ORDER BY created_at DESC
+        LIMIT 4
+    `);
+
+    const dealCards = dealsRes.rows.map((d: DealRow) => createDealCard(d));
+
+    // Default uses OPPOSITE layout of personalized
+    const oppositeLayout = layoutVariant === 'carousel' ? 'grid' : 'carousel';
+
+    const layoutComponent = oppositeLayout === 'grid'
+        ? { type: 'grid', columns: 2, items: dealCards }
+        : { type: 'horizontal_carousel', items: dealCards };
+
+    const root = {
+        type: 'widget_container',
+        title: 'Top Deals',
+        padding: { top: 16, right: 16, bottom: 16, left: 16 },
+        items: [
+            { type: 'section_header', title: '🔥 Featured Deals', subtitle: 'Best offers of the day' },
+            layoutComponent,
+            { type: 'action_button', label: 'Browse All Deals', deeplink: 'app://deals' }
+        ]
+    };
+
+    return root;
+};
 
 const WIDGET_KEY = 'top_deals';
 
@@ -85,8 +144,8 @@ router.post('/deals/:id/save', authenticateJWT, async (req, res) => {
         `, [userId, WIDGET_KEY]);
         const newVersion = verRes.rows[0].version;
 
-        // 3. Generate Snapshot
-        const rootContent = await generateSnapshot(userId);
+        // 3. Generate Snapshot with DealCards
+        const rootContent = await generatePersonalizedSnapshot(userId, LAYOUT_VARIANT);
 
         // 4. Outbox Insert - Web
         const eventWeb = {
@@ -96,11 +155,11 @@ router.post('/deals/:id/save', authenticateJWT, async (req, res) => {
             audience_type: 'user',
             audience_id: userId,
             widget_key: WIDGET_KEY,
-            schema_version: 1,
+            schema_version: 2,
             data_version: newVersion,
             min_ios_version: 1,
             content: {
-                schema_version: 1,
+                schema_version: 2,
                 data_version: newVersion,
                 root: rootContent
             }
@@ -158,7 +217,7 @@ router.post('/deals/:id/unsave', authenticateJWT, async (req, res) => {
         const newVersion = verRes.rows[0].version;
 
         // 3. Generate Snapshot
-        const rootContent = await generateSnapshot(userId);
+        const rootContent = await generatePersonalizedSnapshot(userId, LAYOUT_VARIANT);
 
         // 4. Outbox Insert
         const eventWeb = {
@@ -168,11 +227,11 @@ router.post('/deals/:id/unsave', authenticateJWT, async (req, res) => {
             audience_type: 'user',
             audience_id: userId,
             widget_key: WIDGET_KEY,
-            schema_version: 1,
+            schema_version: 2,
             data_version: newVersion,
             min_ios_version: 1,
             content: {
-                schema_version: 1,
+                schema_version: 2,
                 data_version: newVersion,
                 root: rootContent
             }
@@ -203,48 +262,42 @@ router.post('/deals/:id/unsave', authenticateJWT, async (req, res) => {
     }
 });
 
-// Admin Publish Default
-router.post('/admin/publish-default', async (req, res) => {
-    // In real app, check admin auth.
-
-    // Default Widget Content
-    const defaultContent = {
-        type: 'widget_container',
-        title: 'Top Deals',
-        items: [
-            { type: 'text_row', text: 'Welcome to Deals!' },
-            { type: 'action_button', label: 'Browse', deeplink: 'app://browse' }
-        ]
-    };
-
-    const eventWeb = {
-        event_id: crypto.randomUUID(),
-        product_id: 'deals_app',
-        platform: 'web',
-        audience_type: 'default',
-        audience_id: 'global',
-        widget_key: WIDGET_KEY,
-        schema_version: 1,
-        data_version: 1,
-        min_ios_version: 1,
-        content: {
-            schema_version: 1,
-            data_version: 1,
-            root: defaultContent
-        }
-    };
-
-    const eventIOS = {
-        ...eventWeb,
-        event_id: crypto.randomUUID(),
-        platform: 'ios',
-        min_ios_version: 16
-    };
-
-    const EVENT_TYPE = 'WIDGET_SNAPSHOT_UPSERT';
-
-    // Insert to Outbox
+// Admin Publish Default - uses OPPOSITE layout of personalized
+router.post('/admin/publish-default', async (_req, res) => {
     try {
+        // Generate default content with OPPOSITE layout
+        const defaultContent = await generateDefaultSnapshot(LAYOUT_VARIANT);
+
+        // Use timestamp as data_version to ensure updates always take effect
+        const dataVersion = Math.floor(Date.now() / 1000);
+
+        const eventWeb = {
+            event_id: crypto.randomUUID(),
+            product_id: 'deals_app',
+            platform: 'web',
+            audience_type: 'default',
+            audience_id: 'global',
+            widget_key: WIDGET_KEY,
+            schema_version: 2,
+            data_version: dataVersion,
+            min_ios_version: 1,
+            content: {
+                schema_version: 2,
+                data_version: dataVersion,
+                root: defaultContent
+            }
+        };
+
+        const eventIOS = {
+            ...eventWeb,
+            event_id: crypto.randomUUID(),
+            platform: 'ios',
+            min_ios_version: 16
+        };
+
+        const EVENT_TYPE = 'WIDGET_SNAPSHOT_UPSERT';
+
+        // Insert to Outbox
         await query(
             'INSERT INTO outbox (aggregate_id, event_type, payload) VALUES ($1, $2, $3), ($4, $5, $6)',
             ['default', EVENT_TYPE, JSON.stringify(eventWeb), 'default', EVENT_TYPE, JSON.stringify(eventIOS)]
@@ -270,6 +323,14 @@ router.get('/me/saved', authenticateJWT, async (req, res) => {
     } catch {
         res.status(500).json({ error: 'Database error' });
     }
+});
+
+// Expose current layout variant for debugging
+router.get('/admin/layout-variant', (_req, res) => {
+    res.json({
+        personalized: LAYOUT_VARIANT,
+        default: LAYOUT_VARIANT === 'carousel' ? 'grid' : 'carousel'
+    });
 });
 
 export default router;

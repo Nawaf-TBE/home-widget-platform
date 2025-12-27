@@ -31,6 +31,13 @@ struct SDUIContent: Codable {
     }
 }
 
+struct SDUIPadding: Codable {
+    let top: Int?
+    let right: Int?
+    let bottom: Int?
+    let left: Int?
+}
+
 struct SDUIComponent: Codable {
     let type: String
     let title: String?
@@ -38,4 +45,29 @@ struct SDUIComponent: Codable {
     let label: String?
     let deeplink: String?
     let items: [SDUIComponent]?
+    let padding: SDUIPadding?
+    
+    // section_header
+    let subtitle: String?
+    let icon: String?
+    
+    // deal_card
+    let category: String?
+    let imageUrl: String?
+    let price: Double?
+    let originalPrice: Double?
+    let badgeText: String?
+    
+    // grid
+    let columns: Int?
+    
+    enum CodingKeys: String, CodingKey {
+        case type, title, text, label, deeplink, items, padding
+        case subtitle, icon, category
+        case imageUrl = "image_url"
+        case price
+        case originalPrice = "original_price"
+        case badgeText = "badge_text"
+        case columns
+    }
 }

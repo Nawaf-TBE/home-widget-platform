@@ -127,4 +127,255 @@ describe('Core Ingester Integration', () => {
         expect(res.rows).toHaveLength(1);
         expect(res.rows[0].data_version).toBe(1);
     });
+
+    describe('New Component Types (Flexibility)', () => {
+        const validEventWithGrid = {
+            event_id: '22222222-2222-2222-2222-222222222222',
+            product_id: 'deals_app',
+            platform: 'web',
+            audience_type: 'default',
+            audience_id: 'global',
+            widget_key: 'flex_grid',
+            schema_version: 2,
+            data_version: 1,
+            content: {
+                schema_version: 2,
+                data_version: 1,
+                root: {
+                    type: 'widget_container',
+                    title: 'Grid Test',
+                    padding: { top: 16, right: 16, bottom: 16, left: 16 },
+                    items: [
+                        { type: 'section_header', title: 'Featured', subtitle: 'Best offers' },
+                        {
+                            type: 'grid',
+                            columns: 2,
+                            items: [
+                                {
+                                    type: 'deal_card',
+                                    title: 'Test Deal',
+                                    image_url: 'https://example.com/img.jpg',
+                                    price: 29.99,
+                                    original_price: 49.99,
+                                    badge_text: '40% OFF',
+                                    deeplink: 'app://deals/1'
+                                }
+                            ]
+                        },
+                        { type: 'action_button', label: 'View All', deeplink: 'app://deals' }
+                    ]
+                }
+            }
+        };
+
+        const validEventWithCarousel = {
+            event_id: '33333333-3333-3333-3333-333333333333',
+            product_id: 'deals_app',
+            platform: 'ios',
+            audience_type: 'user',
+            audience_id: 'u2',
+            widget_key: 'flex_carousel',
+            schema_version: 2,
+            data_version: 1,
+            min_ios_version: 16,
+            content: {
+                schema_version: 2,
+                data_version: 1,
+                root: {
+                    type: 'widget_container',
+                    title: 'Carousel Test',
+                    items: [
+                        { type: 'section_header', title: 'Your Picks' },
+                        {
+                            type: 'horizontal_carousel',
+                            items: [
+                                {
+                                    type: 'deal_card',
+                                    title: 'Carousel Deal',
+                                    image_url: 'https://example.com/img2.jpg',
+                                    price: 19.99,
+                                    deeplink: 'app://deals/2'
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+        };
+
+        beforeEach(async () => {
+            await pool.query('DELETE FROM widgets WHERE widget_key IN ($1, $2)', ['flex_grid', 'flex_carousel']);
+            const keys = await redisClient.keys('widget:deals_app:*');
+            if (keys.length) await redisClient.del(keys);
+        });
+
+        it('accepts and processes grid layout with deal_cards', async () => {
+            await processMessage('2000-0', { event: JSON.stringify(validEventWithGrid) });
+
+            const res = await pool.query('SELECT * FROM widgets WHERE widget_key = $1', ['flex_grid']);
+            expect(res.rows).toHaveLength(1);
+            expect(res.rows[0].content.root.items[1].type).toBe('grid');
+            expect(res.rows[0].content.root.items[1].columns).toBe(2);
+            expect(res.rows[0].content.root.items[1].items[0].type).toBe('deal_card');
+        });
+
+        it('accepts and processes horizontal_carousel with deal_cards', async () => {
+            await processMessage('2001-0', { event: JSON.stringify(validEventWithCarousel) });
+
+            const res = await pool.query('SELECT * FROM widgets WHERE widget_key = $1', ['flex_carousel']);
+            expect(res.rows).toHaveLength(1);
+            expect(res.rows[0].content.root.items[1].type).toBe('horizontal_carousel');
+            expect(res.rows[0].content.root.items[1].items[0].type).toBe('deal_card');
+        });
+
+        it('accepts section_header component', async () => {
+            await processMessage('2002-0', { event: JSON.stringify(validEventWithGrid) });
+
+            const res = await pool.query('SELECT * FROM widgets WHERE widget_key = $1', ['flex_grid']);
+            expect(res.rows[0].content.root.items[0].type).toBe('section_header');
+            expect(res.rows[0].content.root.items[0].subtitle).toBe('Best offers');
+        });
+
+        it('stores and retrieves padding from widget_container', async () => {
+            await processMessage('2003-0', { event: JSON.stringify(validEventWithGrid) });
+
+            const res = await pool.query('SELECT * FROM widgets WHERE widget_key = $1', ['flex_grid']);
+            expect(res.rows[0].content.root.padding).toEqual({ top: 16, right: 16, bottom: 16, left: 16 });
+        });
+    });
+
+    describe('Validation Rejection (Core Safety)', () => {
+        let consoleSpy: jest.SpyInstance;
+
+        beforeEach(() => {
+            consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
+        });
+
+        afterEach(() => {
+            consoleSpy.mockRestore();
+        });
+
+        it('rejects event with unknown component type', async () => {
+            const invalidEvent = {
+                event_id: '44444444-4444-4444-4444-444444444444',
+                product_id: 'deals_app',
+                platform: 'web',
+                audience_type: 'default',
+                audience_id: 'global',
+                widget_key: 'rejected_unknown',
+                schema_version: 2,
+                data_version: 1,
+                content: {
+                    schema_version: 2,
+                    data_version: 1,
+                    root: {
+                        type: 'widget_container',
+                        title: 'Invalid',
+                        items: [
+                            { type: 'mystery_component', foo: 'bar' }
+                        ]
+                    }
+                }
+            };
+
+            await processMessage('3000-0', { event: JSON.stringify(invalidEvent) });
+
+            // Should NOT be in DB
+            const res = await pool.query('SELECT * FROM widgets WHERE widget_key = $1', ['rejected_unknown']);
+            expect(res.rows).toHaveLength(0);
+            expect(consoleSpy).toHaveBeenCalled();
+        });
+
+        it('rejects event with padding outside bounds (>24)', async () => {
+            const invalidEvent = {
+                event_id: '55555555-5555-5555-5555-555555555555',
+                product_id: 'deals_app',
+                platform: 'web',
+                audience_type: 'default',
+                audience_id: 'global',
+                widget_key: 'rejected_padding',
+                schema_version: 2,
+                data_version: 1,
+                content: {
+                    schema_version: 2,
+                    data_version: 1,
+                    root: {
+                        type: 'widget_container',
+                        title: 'Bad Padding',
+                        padding: { top: 100 },
+                        items: []
+                    }
+                }
+            };
+
+            await processMessage('3001-0', { event: JSON.stringify(invalidEvent) });
+
+            const res = await pool.query('SELECT * FROM widgets WHERE widget_key = $1', ['rejected_padding']);
+            expect(res.rows).toHaveLength(0);
+            expect(consoleSpy).toHaveBeenCalled();
+        });
+
+        it('rejects event with grid columns > 3', async () => {
+            const invalidEvent = {
+                event_id: '66666666-6666-6666-6666-666666666666',
+                product_id: 'deals_app',
+                platform: 'web',
+                audience_type: 'default',
+                audience_id: 'global',
+                widget_key: 'rejected_columns',
+                schema_version: 2,
+                data_version: 1,
+                content: {
+                    schema_version: 2,
+                    data_version: 1,
+                    root: {
+                        type: 'widget_container',
+                        title: 'Bad Columns',
+                        items: [
+                            { type: 'grid', columns: 5, items: [] }
+                        ]
+                    }
+                }
+            };
+
+            await processMessage('3002-0', { event: JSON.stringify(invalidEvent) });
+
+            const res = await pool.query('SELECT * FROM widgets WHERE widget_key = $1', ['rejected_columns']);
+            expect(res.rows).toHaveLength(0);
+            expect(consoleSpy).toHaveBeenCalled();
+        });
+
+        it('rejects event with too many items in widget_container (>20)', async () => {
+            const items = [];
+            for (let i = 0; i < 21; i++) {
+                items.push({ type: 'text_row', text: `Item ${i}` });
+            }
+
+            const invalidEvent = {
+                event_id: '77777777-7777-7777-7777-777777777777',
+                product_id: 'deals_app',
+                platform: 'web',
+                audience_type: 'default',
+                audience_id: 'global',
+                widget_key: 'rejected_items',
+                schema_version: 2,
+                data_version: 1,
+                content: {
+                    schema_version: 2,
+                    data_version: 1,
+                    root: {
+                        type: 'widget_container',
+                        title: 'Too Many Items',
+                        items
+                    }
+                }
+            };
+
+            await processMessage('3003-0', { event: JSON.stringify(invalidEvent) });
+
+            const res = await pool.query('SELECT * FROM widgets WHERE widget_key = $1', ['rejected_items']);
+            expect(res.rows).toHaveLength(0);
+            expect(consoleSpy).toHaveBeenCalled();
+        });
+    });
 });

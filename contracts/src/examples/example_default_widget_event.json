@@ -1,27 +1,78 @@
 {
     "event_id": "123e4567-e89b-12d3-a456-426614174000",
-    "product_id": "home",
+    "product_id": "deals_app",
     "platform": "web",
     "audience_type": "default",
     "audience_id": "global",
     "widget_key": "top_deals",
-    "schema_version": 1,
+    "schema_version": 2,
     "data_version": 1,
     "content": {
-        "schema_version": 1,
+        "schema_version": 2,
         "data_version": 1,
         "root": {
             "type": "widget_container",
             "title": "Top Deals",
+            "padding": {
+                "top": 16,
+                "right": 16,
+                "bottom": 16,
+                "left": 16
+            },
             "items": [
                 {
-                    "type": "text_row",
-                    "text": "Best deals of the day"
+                    "type": "section_header",
+                    "title": "🔥 Featured Deals",
+                    "subtitle": "Best offers of the day"
+                },
+                {
+                    "type": "grid",
+                    "columns": 2,
+                    "items": [
+                        {
+                            "type": "deal_card",
+                            "title": "Premium Headphones",
+                            "category": "Electronics",
+                            "image_url": "https://picsum.photos/seed/headphones/200",
+                            "price": 79.99,
+                            "original_price": 129.99,
+                            "badge_text": "38% OFF",
+                            "deeplink": "app://deals/1"
+                        },
+                        {
+                            "type": "deal_card",
+                            "title": "Smart Watch Pro",
+                            "category": "Wearables",
+                            "image_url": "https://picsum.photos/seed/watch/200",
+                            "price": 199.99,
+                            "original_price": 299.99,
+                            "badge_text": "33% OFF",
+                            "deeplink": "app://deals/2"
+                        },
+                        {
+                            "type": "deal_card",
+                            "title": "Wireless Charger",
+                            "category": "Accessories",
+                            "image_url": "https://picsum.photos/seed/charger/200",
+                            "price": 24.99,
+                            "deeplink": "app://deals/3"
+                        },
+                        {
+                            "type": "deal_card",
+                            "title": "Bluetooth Speaker",
+                            "category": "Audio",
+                            "image_url": "https://picsum.photos/seed/speaker/200",
+                            "price": 49.99,
+                            "original_price": 69.99,
+                            "badge_text": "Hot",
+                            "deeplink": "app://deals/4"
+                        }
+                    ]
                 },
                 {
                     "type": "action_button",
-                    "label": "View All",
-                    "deeplink": "/deals"
+                    "label": "Browse All Deals",
+                    "deeplink": "app://deals"
                 }
             ]
         }

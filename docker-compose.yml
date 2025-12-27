@@ -93,7 +93,7 @@ services:
       - DB_USER=user
       - DB_PASSWORD=password
       - REDIS_URL=redis://redis:6379
-      - JWT_SECRET=dev-secret
+      - JWT_SECRET=platform-secret-2025
       - REDIS_WIDGET_TTL_SECONDS=3600
     ports:
       - "3003:3000"
@@ -119,7 +119,8 @@ services:
       - DB_NAME=product
       - DB_USER=user
       - DB_PASSWORD=password
-      - JWT_SECRET=dev-secret
+      - JWT_SECRET=platform-secret-2025
+      - DEALS_WIDGET_LAYOUT_VARIANT=carousel
       - PORT=3000
       - REDIS_URL=redis://redis:6379
     ports:

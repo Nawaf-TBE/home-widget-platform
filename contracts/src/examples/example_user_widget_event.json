@@ -1,24 +1,67 @@
 {
-    "event_id": "987fcdeb-51a2-43cf-9876-543210987654",
-    "product_id": "home",
-    "platform": "ios",
+    "event_id": "223e4567-e89b-12d3-a456-426614174001",
+    "product_id": "deals_app",
+    "platform": "web",
     "audience_type": "user",
-    "audience_id": "123",
-    "widget_key": "recommended",
-    "schema_version": 1,
-    "data_version": 2,
-    "min_ios_version": 16,
+    "audience_id": "user-123",
+    "widget_key": "top_deals",
+    "schema_version": 2,
+    "data_version": 5,
     "content": {
-        "schema_version": 1,
-        "data_version": 2,
-        "min_ios_version": 16,
+        "schema_version": 2,
+        "data_version": 5,
         "root": {
             "type": "widget_container",
-            "title": "For You",
+            "title": "Your Deals",
+            "padding": {
+                "top": 16,
+                "right": 16,
+                "bottom": 16,
+                "left": 16
+            },
             "items": [
                 {
-                    "type": "text_row",
-                    "text": "Based on your history"
+                    "type": "section_header",
+                    "title": "❤️ Your Saved Top-Deals",
+                    "subtitle": "Personalized for you"
+                },
+                {
+                    "type": "horizontal_carousel",
+                    "items": [
+                        {
+                            "type": "deal_card",
+                            "title": "Gaming Laptop",
+                            "category": "Computers",
+                            "image_url": "https://picsum.photos/seed/laptop/200",
+                            "price": 899.99,
+                            "original_price": 1299.99,
+                            "badge_text": "30% OFF",
+                            "deeplink": "app://deals/5"
+                        },
+                        {
+                            "type": "deal_card",
+                            "title": "Mechanical Keyboard",
+                            "category": "Accessories",
+                            "image_url": "https://picsum.photos/seed/keyboard/200",
+                            "price": 89.99,
+                            "deeplink": "app://deals/6"
+                        },
+                        {
+                            "type": "deal_card",
+                            "title": "4K Monitor",
+                            "category": "Displays",
+                            "image_url": "https://picsum.photos/seed/monitor/200",
+                            "price": 349.99,
+                            "original_price": 499.99,
+                            "badge_text": "Best Seller",
+                            "deeplink": "app://deals/7"
+                        }
+                    ]
+                },
+                {
+                    "type": "action_button",
+                    "label": "View All Saved",
+                    "deeplink": "app://me/saved"
                 }
             ]
         }
