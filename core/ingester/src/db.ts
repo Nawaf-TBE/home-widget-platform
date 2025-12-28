@@ -24,7 +24,30 @@ export interface Widget extends WidgetKey {
     data_version: number;
 }
 
-export const upsertWidget = async (widget: Widget): Promise<void> => {
+export type UpsertResult = 'insert' | 'update' | 'ignored_older';
+
+export const upsertWidget = async (widget: Widget): Promise<UpsertResult> => {
+    // First check if widget exists and what version it has
+    const checkQuery = `
+        SELECT data_version FROM widgets 
+        WHERE product_id = $1 AND platform = $2 AND audience_type = $3 
+        AND audience_id = $4 AND widget_key = $5
+    `;
+    const checkResult = await pool.query(checkQuery, [
+        widget.product_id,
+        widget.platform,
+        widget.audience_type,
+        widget.audience_id,
+        widget.widget_key
+    ]);
+
+    const existingVersion = checkResult.rows[0]?.data_version;
+
+    // If existing version is >= incoming, skip
+    if (existingVersion !== undefined && existingVersion >= widget.data_version) {
+        return 'ignored_older';
+    }
+
     const query = `
         INSERT INTO widgets (
             product_id, platform, audience_type, audience_id, widget_key,
@@ -54,4 +77,5 @@ export const upsertWidget = async (widget: Widget): Promise<void> => {
     ];
 
     await pool.query(query, values);
+    return existingVersion === undefined ? 'insert' : 'update';
 };

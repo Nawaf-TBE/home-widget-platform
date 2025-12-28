@@ -45,6 +45,42 @@ pnpm -w demo:failure:redis
 pnpm -w demo:failure:ingester
 ```
 
+## Freshness Demo
+Measure real-time update latency from Product Save to Home Widget:
+```bash
+pnpm -w demo:freshness
+```
+
+**What it proves:**
+- Save action in Product triggers widget update via the full pipeline
+- Measures `time_to_freshness_ms` (typically <1 second)
+- Shows `data_version` bump and `served_from` (redis/db)
+- Logs show end-to-end correlation via `event_id`
+
+## High-Traffic Protection Demo
+Prove Core serves widgets even when Product is completely down:
+```bash
+pnpm -w demo:load:product-down
+```
+
+**What it proves:**
+- Stops Product container completely
+- Runs 50 concurrent connections for 10 seconds
+- Core continues serving widgets at 100% success rate
+- No runtime dependency on Product services
+
+## What to Show in Video
+1. Run `pnpm -w demo:freshness` - show delta_ms and data_version bump
+2. Show ingester logs with `event_id` + `upsert_result` correlation:
+   ```bash
+   docker compose logs core-ingester --tail 20
+   ```
+3. Run `pnpm -w demo:load:product-down` - show Core serving widgets with Product stopped
+4. Show Core API logs with `served_from` and `latency_ms`:
+   ```bash
+   docker compose logs core-api --tail 20
+   ```
+
 ## Documentation
 - [**Technical Architecture (CONCEPT.md)**](./CONCEPT.md): Rationale, data flows, and failure modes.
 - [**Product Integration (DEVELOPER_GUIDELINE.md)**](./DEVELOPER_GUIDELINE.md): How to publish widgets and schema requirements.

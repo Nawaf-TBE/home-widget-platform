@@ -46,6 +46,10 @@ export const processIteration = async (redisClient: { xAdd: (key: string, id: st
         for (const row of res.rows) {
             // XADD events * event <payload>
             await redisClient.xAdd(STREAM_KEY, '*', { event: row.payload });
+
+            // Structured log for correlation
+            const payload = JSON.parse(row.payload);
+            console.log(`[OutboxWorker] published event_id=${payload.event_id} product_id=${payload.product_id} platform=${payload.platform} audience=${payload.audience_type}:${payload.audience_id} widget_key=${payload.widget_key} data_version=${payload.data_version} outbox_id=${row.id}`);
         }
 
         // 3. Mark Published
@@ -61,14 +65,14 @@ export const processIteration = async (redisClient: { xAdd: (key: string, id: st
 
     } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-        console.error('Worker Error:', err);
+        console.error('[OutboxWorker] Worker Error:', err);
 
         if (client) {
             try {
                 await client.query('ROLLBACK');
                 client.release();
             } catch {
-                // Log is already in runIteration if it throws, or we can add here
+                // Log is already in runIteration if it throws
             }
         }
 
@@ -84,9 +88,12 @@ export const processIteration = async (redisClient: { xAdd: (key: string, id: st
                     WHERE id = ANY($1)
                 `, [jobIds, errorMessage]);
                 retryClient.release();
-                console.log(`Updated retry count for ${jobIds.length} events.`);
+                // Log retry for each affected job
+                for (const id of jobIds) {
+                    console.log(`[OutboxWorker] publish_failed outbox_id=${id} retry_count=retry+1 error=${errorMessage}`);
+                }
             } catch (retryErr) {
-                console.error('Failed to update retry counts:', retryErr);
+                console.error('[OutboxWorker] Failed to update retry counts:', retryErr);
             }
         }
         return { error: errorMessage, shouldSleep: true };

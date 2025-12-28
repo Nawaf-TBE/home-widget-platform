@@ -180,11 +180,12 @@ router.post('/deals/:id/save', authenticateJWT, async (req, res) => {
         );
 
         await client.query('COMMIT');
+        console.log(`[ProductAPI] user=${userId} action=save deal=${dealId} new_data_version=${newVersion}`);
         res.sendStatus(200);
 
     } catch (err) {
         await client.query('ROLLBACK');
-        console.error(err);
+        console.error(`[ProductAPI] save_failed user=${userId} deal=${dealId} error=${err instanceof Error ? err.message : String(err)}`);
         res.status(500).json({ error: 'Transaction failed' });
     } finally {
         client.release();
@@ -251,11 +252,12 @@ router.post('/deals/:id/unsave', authenticateJWT, async (req, res) => {
         );
 
         await client.query('COMMIT');
+        console.log(`[ProductAPI] user=${userId} action=unsave deal=${dealId} new_data_version=${newVersion}`);
         res.sendStatus(200);
 
     } catch (err) {
         await client.query('ROLLBACK');
-        console.error(err);
+        console.error(`[ProductAPI] unsave_failed user=${userId} deal=${dealId} error=${err instanceof Error ? err.message : String(err)}`);
         res.status(500).json({ error: 'Transaction failed' });
     } finally {
         client.release();

@@ -22,6 +22,8 @@ export interface Widget extends WidgetKey {
     content: Record<string, unknown>;
     schema_version: number;
     data_version: number;
+    created_at?: Date;
+    updated_at?: Date;
 }
 
 export const upsertWidget = async (widget: Widget): Promise<void> => {

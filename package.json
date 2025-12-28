@@ -8,6 +8,8 @@
     "demo:failure:product": "pnpm --filter @home-widget-platform/failure-demos run test -- product-down.test.ts",
     "demo:failure:redis": "pnpm --filter @home-widget-platform/failure-demos run test -- redis-down.test.ts",
     "demo:failure:ingester": "pnpm --filter @home-widget-platform/failure-demos run test -- ingester-restart.test.ts",
+    "demo:freshness": "npx tsx tests/demo/freshness.ts",
+    "demo:load:product-down": "npx tsx tests/demo/load_product_down.ts",
     "up": "docker compose up -d",
     "down": "docker compose down"
   },
