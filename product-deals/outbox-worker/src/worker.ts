@@ -5,11 +5,11 @@ dotenv.config();
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6380';
 const DB_CONFIG = {
-    user: process.env.DB_USER || 'user',
-    password: process.env.DB_PASSWORD || 'password',
-    host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT || '5435'),
-    database: process.env.DB_NAME || 'product',
+    user: process.env.PRODUCT_DB_USER || process.env.DB_USER || 'user',
+    password: process.env.PRODUCT_DB_PASSWORD || process.env.DB_PASSWORD || 'password',
+    host: process.env.PRODUCT_DB_HOST || process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.PRODUCT_DB_PORT || process.env.DB_PORT || '5435'),
+    database: process.env.PRODUCT_DB_NAME || process.env.DB_NAME || 'product',
 };
 
 const STREAM_KEY = 'events';

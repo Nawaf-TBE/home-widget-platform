@@ -71,17 +71,17 @@ const createCategoryTile = (deal: DealRow) => ({
 
 const createTariffTile = (deal: DealRow) => ({
     type: 'tariff_tile',
-    data_gb: deal.data_gb || 0,
+    data_gb: Math.max(1, deal.data_gb || 1),
     price_per_month: parseFloat(String(deal.price_per_month || 0)),
     compare_count: deal.compare_count || 3,
     deeplink: `app://tariff/${deal.id}`,
     ...(deal.badge_text ? { badge_text: deal.badge_text } : {})
 });
 
-// Helper: Generate personalized snapshot with DealCards
-const generatePersonalizedSnapshot = async (userId: string, layoutVariant: 'carousel' | 'grid') => {
+const generatePersonalizedSnapshot = async (userId: string, layoutVariant: 'carousel' | 'grid', dbClient?: { query: typeof query }) => {
+    const q = dbClient ? dbClient.query.bind(dbClient) : query;
     // Get Saved Deals
-    const savedRes = await query(`
+    const savedRes = await q(`
         SELECT d.*
         FROM saved_deals s
         JOIN deals d ON s.deal_id = d.id
@@ -206,7 +206,7 @@ router.post('/deals/:id/save', authenticateJWT, async (req, res) => {
         const newVersion = verRes.rows[0].version;
 
         // 3. Generate Snapshot with DealCards
-        const rootContent = await generatePersonalizedSnapshot(userId, LAYOUT_VARIANT);
+        const rootContent = await generatePersonalizedSnapshot(userId, LAYOUT_VARIANT, client);
 
         // 4. Outbox Insert - Web & iOS
         const eventWeb = {
@@ -267,7 +267,7 @@ router.post('/deals/:id/unsave', authenticateJWT, async (req, res) => {
         const newVersion = verRes.rows[0].version;
 
         // 3. Generate Snapshot
-        const rootContent = await generatePersonalizedSnapshot(userId, LAYOUT_VARIANT);
+        const rootContent = await generatePersonalizedSnapshot(userId, LAYOUT_VARIANT, client);
 
         // 4. Outbox Insert
         const eventWeb = {

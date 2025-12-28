@@ -1,11 +1,14 @@
 import { Pool, PoolConfig } from 'pg';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const poolConfig: PoolConfig = {
-    host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT || '5432'),
-    database: process.env.DB_NAME || 'core',
-    user: process.env.DB_USER || 'user',
-    password: process.env.DB_PASSWORD || 'password',
+    host: process.env.CORE_DB_HOST || process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.CORE_DB_PORT || process.env.DB_PORT || '5434'),
+    database: process.env.CORE_DB_NAME || process.env.DB_NAME || 'core',
+    user: process.env.CORE_DB_USER || process.env.DB_USER || 'user',
+    password: process.env.CORE_DB_PASSWORD || process.env.DB_PASSWORD || 'password',
 };
 
 export const pool = new Pool(poolConfig);
@@ -66,4 +69,32 @@ export const getWidget = async (key: WidgetKey): Promise<Widget | null> => {
     const values = [key.product_id, key.platform, key.audience_type, key.audience_id, key.widget_key];
     const res = await pool.query(query, values);
     return res.rows[0] || null;
+};
+
+/**
+ * Fetches all widgets for given product(s), platform and user.
+ * Prioritizes user-specific widgets over default widgets for each (product, key) pair.
+ */
+export const getHomeWidgets = async (productIds: string | string[], platform: string, userId: string): Promise<Widget[]> => {
+    const ids = Array.isArray(productIds) ? productIds : [productIds];
+    const query = `
+        SELECT DISTINCT ON (product_id, platform, widget_key) *
+        FROM widgets
+        WHERE product_id = ANY($1) 
+          AND platform = $2 
+          AND (
+            (audience_type = 'user' AND audience_id = $3)
+            OR 
+            (audience_type = 'default' AND audience_id = 'global')
+          )
+        ORDER BY product_id, 
+                 platform,
+                 widget_key, 
+                 CASE audience_type WHEN 'user' THEN 1 WHEN 'default' THEN 2 ELSE 3 END ASC,
+                 updated_at DESC,
+                 data_version DESC
+    `;
+    const values = [ids, platform, userId];
+    const res = await pool.query(query, values);
+    return res.rows;
 };

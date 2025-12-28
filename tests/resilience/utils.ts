@@ -1,13 +1,17 @@
 import { execSync } from 'child_process';
 import { Client } from 'pg';
-import { createClient } from 'redis';
+import { createClient, RedisClientType } from 'redis';
 import axios from 'axios';
+import dotenv from 'dotenv';
 
-export const CORE_API = 'http://127.0.0.1:3003/v1';
-export const PRODUCT_API = 'http://127.0.0.1:3001/v1';
-export const CORE_DB_URL = 'postgres://user:password@127.0.0.1:5434/core';
-export const PRODUCT_DB_URL = 'postgres://user:password@127.0.0.1:5435/product';
-export const REDIS_URL = 'redis://127.0.0.1:6380';
+dotenv.config({ path: '../../.env.test' });
+dotenv.config();
+
+export const CORE_API = process.env.CORE_BASE_URL || 'http://127.0.0.1:3003/v1';
+export const PRODUCT_API = process.env.PRODUCT_BASE_URL || 'http://127.0.0.1:3001/v1';
+export const CORE_DB_URL = process.env.CORE_DB_URL || 'postgres://user:password@127.0.0.1:5434/core';
+export const PRODUCT_DB_URL = process.env.PRODUCT_DB_URL || 'postgres://user:password@127.0.0.1:5435/product';
+export const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6380';
 
 export const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
@@ -54,7 +58,7 @@ export const getProductDB = async () => {
 export const getRedis = async () => {
     const client = createClient({ url: REDIS_URL });
     await client.connect();
-    return client;
+    return client as any;
 };
 
 export const getJWT = async (userId: string = 'user-demo') => {

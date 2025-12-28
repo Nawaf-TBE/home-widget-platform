@@ -1,6 +1,6 @@
-import { processMessage } from './ingester';
-import { redisClient, connectRedis } from './redis';
-import { pool } from './db';
+import { processMessage } from '../src/ingester';
+import { redisClient, connectRedis } from '../src/redis';
+import { pool } from '../src/db';
 
 
 // Mock specific redis/db calls if needed, OR use real connections since we have them in docker.
@@ -374,6 +374,41 @@ describe('Core Ingester Integration', () => {
             await processMessage('3003-0', { event: JSON.stringify(invalidEvent) });
 
             const res = await pool.query('SELECT * FROM widgets WHERE widget_key = $1', ['rejected_items']);
+            expect(res.rows).toHaveLength(0);
+            expect(consoleSpy).toHaveBeenCalled();
+        });
+        it('rejects event with tariff_tile data_gb < 1', async () => {
+            const invalidEvent = {
+                event_id: '88888888-8888-8888-8888-888888888888',
+                product_id: 'deals_app',
+                platform: 'web',
+                audience_type: 'default',
+                audience_id: 'global',
+                widget_key: 'rejected_tariff',
+                schema_version: 2,
+                data_version: 1,
+                content: {
+                    schema_version: 2,
+                    data_version: 1,
+                    root: {
+                        type: 'widget_container',
+                        title: 'Bad Tariff',
+                        items: [
+                            {
+                                type: 'tariff_tile',
+                                data_gb: 0, // Should be >= 1
+                                price_per_month: 10,
+                                compare_count: 5,
+                                deeplink: 'app://t'
+                            }
+                        ]
+                    }
+                }
+            };
+
+            await processMessage('3004-0', { event: JSON.stringify(invalidEvent) });
+
+            const res = await pool.query('SELECT * FROM widgets WHERE widget_key = $1', ['rejected_tariff']);
             expect(res.rows).toHaveLength(0);
             expect(consoleSpy).toHaveBeenCalled();
         });

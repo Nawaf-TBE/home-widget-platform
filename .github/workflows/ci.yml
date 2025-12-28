@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Start Services
+        run: |
+          docker compose up -d
+          # Wait for healthchecks
+          timeout 60s bash -c 'until docker compose ps | grep -q "healthy"; do sleep 5; done' || true
+          docker compose ps
+
+      - name: Wait for Migrations
+        run: |
+          # The migrate containers exit after completion. 
+          # We wait for them to exit with 0.
+          docker compose wait core-migrate
+          docker compose wait product-migrate
+
+      - name: Run All Tests
+        run: |
+          # Use local mappings for host-side tests
+          export DB_HOST=localhost DB_PORT=5434 DB_USER=user DB_PASSWORD=password DB_NAME=core
+          export PRODUCT_DB_PORT=5435 PRODUCT_DB_NAME=product # specific for product-deals/api
+          export CORE_BASE_URL=http://localhost:3003 PRODUCT_BASE_URL=http://localhost:3001 REDIS_URL=redis://localhost:6380
+          export CORE_DB_URL=postgres://user:password@localhost:5434/core PRODUCT_DB_URL=postgres://user:password@localhost:5435/product
+          
+          pnpm -w test:all
+
+      - name: Docker Logs on Failure
+        if: failure()
+        run: docker compose logs

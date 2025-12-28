@@ -1,8 +1,8 @@
 import request from 'supertest';
-import { app } from './index';
-import { generateToken } from './auth';
-import { pool } from './db';
-import { redisClient } from './redis';
+import { app } from '../src/index';
+import { generateToken } from '../src/auth';
+import { pool } from '../src/db';
+import { redisClient } from '../src/redis';
 
 describe('Core Delivery API Integration', () => {
     const adminToken = generateToken({ id: 'admin-1', role: 'admin' });

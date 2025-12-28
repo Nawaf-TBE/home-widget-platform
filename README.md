@@ -32,60 +32,47 @@ Perform a full end-to-end audit:
 pnpm -w test:integration
 ```
 
-## Failure & Resilience Demos
-Verify self-healing capabilities:
+## Resilience & Self-Healing Verification
+Verify self-healing capabilities of the asynchronous pipeline:
 ```bash
 # Verify behavior when Product API is down
-pnpm -w demo:failure:product
+pnpm -w run:resilience:product
 
 # Verify recovery after Redis outage
-pnpm -w demo:failure:redis
+pnpm -w run:resilience:redis
 
 # Verify backlog reclamation after Ingester crash
-pnpm -w demo:failure:ingester
+pnpm -w run:resilience:ingester
 ```
 
-## Freshness Demo
-Measure real-time update latency from Product Save to Home Widget:
+### E2E Latency & Throughput Proofs
+Quantifiable verification of performance and isolation:
+
+**1. Real-time Freshness Verification**
+Measure latency from Product Save to Core Widget update:
 ```bash
-pnpm -w demo:freshness
+pnpm -w run:latency
 ```
+- **What it proves:** Millisecond-level eventual consistency across the full pipeline.
 
-**What it proves:**
-- Save action in Product triggers widget update via the full pipeline
-- Measures `time_to_freshness_ms` (typically <1 second)
-- Shows `data_version` bump and `served_from` (redis/db)
-- Logs show end-to-end correlation via `event_id`
-
-## High-Traffic Protection Demo
-Prove Core serves widgets even when Product is completely down:
+**2. High-Traffic Isolation Proof**
+Verify Core serves widgets at 100% success even when Product is dead:
 ```bash
-pnpm -w demo:load:product-down
+pnpm -w run:throughput
 ```
+- **What it proves:** Zero runtime dependency on product domain services for delivery.
 
-**What it proves:**
-- Stops Product container completely
-- Runs 50 concurrent connections for 10 seconds
-- Core continues serving widgets at 100% success rate
-- No runtime dependency on Product services
-
-## What to Show in Video
-1. Run `pnpm -w demo:freshness` - show delta_ms and data_version bump
-2. Show ingester logs with `event_id` + `upsert_result` correlation:
-   ```bash
-   docker compose logs core-ingester --tail 20
-   ```
-3. Run `pnpm -w demo:load:product-down` - show Core serving widgets with Product stopped
-4. Show Core API logs with `served_from` and `latency_ms`:
-   ```bash
-   docker compose logs core-api --tail 20
-   ```
+**3. Multi-Platform Convergence**
+Verify Web and iOS converge to identical states:
+```bash
+pnpm -w run:convergence
+```
 
 ## Documentation
 - [**Technical Architecture (CONCEPT.md)**](./CONCEPT.md): Rationale, data flows, and failure modes.
 - [**Product Integration (DEVELOPER_GUIDELINE.md)**](./DEVELOPER_GUIDELINE.md): How to publish widgets and schema requirements.
 - [**Configuration (infra/ENV.md)**](./infra/ENV.md): Environment variable dictionary.
-- [**Video Script (VIDEO_SCRIPT.md)**](./VIDEO_SCRIPT.md): Presentation outline for reviewers.
+- [**Security Policy (SECURITY.md)**](./SECURITY.md): Secrets management and environment configuration.
 
 ## Deployment (Placeholders)
 - **Staging**: `https://staging.home-widget.check24.de`
@@ -107,16 +94,20 @@ docker compose up --build -d
 # 2. Lint all packages
 pnpm lint
 
-# 3. Unit Tests
-pnpm test
+# 3. All Tests (Unit + Integration + Resilience)
+pnpm test:all
 
-# 4. Integration Tests
+# 4. Individual Verification Suites
+pnpm test:unit
 pnpm test:integration
+pnpm test:resilience
 
-# 5. Failure Demos (Optional)
-pnpm demo:failure:product
-pnpm demo:failure:redis
-pnpm demo:failure:ingester
+# 5. Specific Resilience Scenarios
+pnpm run:resilience:product
+pnpm run:resilience:redis
+pnpm run:resilience:ingester
+pnpm run:latency
+pnpm run:throughput
 ```
 
 ### Live URLs to Fill

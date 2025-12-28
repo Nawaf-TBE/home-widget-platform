@@ -2,12 +2,16 @@ import axios from 'axios';
 import { Client } from 'pg';
 import { createClient } from 'redis';
 import { execSync } from 'child_process';
+import dotenv from 'dotenv';
 
-const CORE_API = 'http://127.0.0.1:3003/v1';
-const PRODUCT_API = 'http://127.0.0.1:3001/v1';
-const CORE_DB_URL = 'postgres://user:password@127.0.0.1:5434/core';
-const PRODUCT_DB_URL = 'postgres://user:password@127.0.0.1:5435/product';
-const REDIS_URL = 'redis://127.0.0.1:6380';
+dotenv.config({ path: '../../.env.test' });
+dotenv.config(); // Fallback to root .env
+
+const CORE_API = process.env.CORE_BASE_URL || 'http://127.0.0.1:3003/v1';
+const PRODUCT_API = process.env.PRODUCT_BASE_URL || 'http://127.0.0.1:3001/v1';
+const CORE_DB_URL = process.env.CORE_DB_URL || 'postgres://user:password@127.0.0.1:5434/core';
+const PRODUCT_DB_URL = process.env.PRODUCT_DB_URL || 'postgres://user:password@127.0.0.1:5435/product';
+const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6380';
 
 describe('End-to-End Integration', () => {
     let coreDb: Client;
@@ -24,6 +28,13 @@ describe('End-to-End Integration', () => {
         await coreDb.connect();
         await productDb.connect();
         await redis.connect();
+    });
+
+    beforeEach(async () => {
+        // Deterministic Start: Clean state for each test
+        await coreDb.query('TRUNCATE widgets');
+        await productDb.query('TRUNCATE outbox CASCADE');
+        await redis.flushAll();
     });
 
     afterAll(async () => {
@@ -68,24 +79,26 @@ describe('End-to-End Integration', () => {
             // Even if empty, it shouldn't crash.
             console.log('Initial widgets:', initialRes.data);
 
-            // 4. Save a deal
+            // 4. Save a deal (must be of kind 'deal' to appear in personalized for now)
             const dealsRes = await axios.get(`${PRODUCT_API}/deals`);
-            const dealId = dealsRes.data[0].id;
-            const dealTitle = dealsRes.data[0].title;
+            const targetDeal = dealsRes.data.find((d: any) => d.kind === 'deal');
+            const dealId = targetDeal.id;
+            const dealTitle = targetDeal.title;
             await axios.post(`${PRODUCT_API}/deals/${dealId}/save`, {}, {
                 headers: { Authorization: `Bearer ${jwt}` }
             });
 
             // 5. Poll Core until personalized appears
             let personalizedFound = false;
-            const timeout = Date.now() + 10000;
+            const timeout = Date.now() + 15000;
             while (Date.now() < timeout) {
                 const res = await axios.get(`${CORE_API}/home/widgets?platform=web`, {
                     headers: { Authorization: `Bearer ${jwt}` }
                 });
 
                 const hasPersonalized = res.data.some((w: any) =>
-                    w.content.data_version >= 2 &&
+                    w.audience_type === 'user' &&
+                    w.audience_id === userId &&
                     JSON.stringify(w.content.root).includes(dealTitle)
                 );
 

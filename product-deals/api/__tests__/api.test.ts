@@ -1,7 +1,7 @@
 import request from 'supertest';
-import { app } from './index';
-import { pool, query } from './db';
-import { generateToken } from './auth';
+import { app } from '../src/index';
+import { pool, query } from '../src/db';
+import { generateToken } from '../src/auth';
 
 describe('Product Deals API Integration', () => {
     let authToken: string;
@@ -93,7 +93,7 @@ describe('Product Deals API Integration', () => {
         expect(res.status).toBe(200);
 
         const outbox = await query('SELECT * FROM outbox WHERE aggregate_id = $1', ['default']);
-        expect(outbox.rows.length).toBe(2);
+        expect(outbox.rows.length).toBe(6); // 3 widgets * 2 platforms
         expect(outbox.rows[0].payload.audience_type).toBe('default');
     });
 });

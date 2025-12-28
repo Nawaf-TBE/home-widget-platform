@@ -1,0 +1,10 @@
+{
+    "name": "@home-widget-platform/integration",
+    "private": true,
+    "scripts": {
+        "test:integration": "jest --config jest.config.js"
+    },
+    "devDependencies": {
+        "dotenv": "^17.2.3"
+    }
+}

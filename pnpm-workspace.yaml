@@ -4,5 +4,5 @@ packages:
   - 'product-deals/*'
   - 'web-home'
   - 'ios-home'
-  - 'tests/e2e'
-  - 'tests/failure-demos'
+  - 'tests/integration'
+  - 'tests/resilience'

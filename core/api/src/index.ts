@@ -1,7 +1,7 @@
 import express, { Response } from 'express';
 import cors from 'cors';
 import { authenticateJWT, AuthRequest } from './auth';
-import { pool, getWidget, WidgetKey, Widget } from './db';
+import { pool, getWidget, getHomeWidgets, WidgetKey, Widget } from './db';
 import { redisClient, connectRedis } from './redis';
 
 export const app = express();
@@ -93,112 +93,26 @@ v1Router.post('/widgets/delivery', authenticateJWT, async (req: AuthRequest, res
  * Query: platform
  */
 v1Router.get('/home/widgets', authenticateJWT, async (req: AuthRequest, res: Response) => {
-    const startTime = Date.now();
     try {
         const platform = (req.query.platform as string) || 'web';
         const userId = req.user?.sub;
 
         if (!userId) return res.sendStatus(401);
 
-        // Define which widgets to show on Home
-        const homeWidgets = [
-            { product_id: 'deals_app', widget_key: 'top_deals' },
-            { product_id: 'deals_app', widget_key: 'categories_grid' },
-            { product_id: 'deals_app', widget_key: 'tariffs_section' }
-        ];
+        // Generic discovery: Fetch all widgets for this user/platform
+        const widgets = await getHomeWidgets('deals_app', platform, userId);
 
-        interface WidgetWithMeta extends Widget {
-            served_from: 'redis' | 'db';
-            served_at: string;
-            widget_updated_at?: string;
-        }
-
-        const results: WidgetWithMeta[] = [];
-        let servedFrom: 'redis' | 'db' = 'db';
-        let fallbackUsed = false;
-
-        await connectRedis();
-
-        for (const w of homeWidgets) {
-            // First try user-specific widget from cache
-            const userCacheKey = `widget:${w.product_id}:${platform}:user:${userId}:${w.widget_key}`;
-            const cachedUser = await redisClient.get(userCacheKey);
-
-            if (cachedUser) {
-                const widget = JSON.parse(cachedUser) as Widget;
-                results.push({
-                    ...widget,
-                    served_from: 'redis',
-                    served_at: new Date().toISOString(),
-                    widget_updated_at: widget.updated_at ? new Date(widget.updated_at).toISOString() : undefined
-                });
-                servedFrom = 'redis';
-                continue;
-            }
-
-            // Try DB for user widget
-            const userWidget = await getWidget({
-                product_id: w.product_id,
-                platform,
-                audience_type: 'user',
-                audience_id: userId,
-                widget_key: w.widget_key
-            });
-
-            if (userWidget) {
-                results.push({
-                    ...userWidget,
-                    served_from: 'db',
-                    served_at: new Date().toISOString(),
-                    widget_updated_at: userWidget.updated_at ? userWidget.updated_at.toISOString() : undefined
-                });
-                servedFrom = 'db';
-                continue;
-            }
-
-            // Try fallback from cache
-            fallbackUsed = true;
-            const defaultCacheKey = `widget:${w.product_id}:${platform}:default:global:${w.widget_key}`;
-            const cachedDefault = await redisClient.get(defaultCacheKey);
-
-            if (cachedDefault) {
-                const widget = JSON.parse(cachedDefault) as Widget;
-                results.push({
-                    ...widget,
-                    served_from: 'redis',
-                    served_at: new Date().toISOString(),
-                    widget_updated_at: widget.updated_at ? new Date(widget.updated_at).toISOString() : undefined
-                });
-                servedFrom = 'redis';
-                continue;
-            }
-
-            // Final fallback: DB default
-            const fallback = await getWidget({
-                product_id: w.product_id,
-                platform,
-                audience_type: 'default',
-                audience_id: 'global',
-                widget_key: w.widget_key
-            });
-            if (fallback) {
-                results.push({
-                    ...fallback,
-                    served_from: 'db',
-                    served_at: new Date().toISOString(),
-                    widget_updated_at: fallback.updated_at ? fallback.updated_at.toISOString() : undefined
-                });
-                servedFrom = 'db';
-            }
-        }
-
-        const latencyMs = Date.now() - startTime;
-        console.log(`[CoreAPI] widgets_request user=${userId} platform=${platform} served_from=${servedFrom} widgets_count=${results.length} latency_ms=${latencyMs} fallback_used=${fallbackUsed}`);
+        // Map to standard response format with metadata
+        const results = widgets.map((w: Widget) => ({
+            ...w,
+            served_from: 'db' as const, // In this specific implementation we fetch from DB
+            served_at: new Date().toISOString(),
+            widget_updated_at: w.updated_at ? new Date(w.updated_at).toISOString() : undefined
+        }));
 
         res.json(results);
     } catch (err) {
-        const latencyMs = Date.now() - startTime;
-        console.error(`[CoreAPI] widgets_request_error latency_ms=${latencyMs}`, err);
+        console.error('Home Delivery Error:', err);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
@@ -225,9 +139,12 @@ v1Router.post('/internal/widgets', authenticateJWT, async (req: AuthRequest, res
 
 app.use('/v1', v1Router);
 
-const server = app.listen(port, () => {
-    console.log(`Core API listening at http://localhost:${port}`);
-});
+let server: any;
+if (process.env.NODE_ENV !== 'test') {
+    server = app.listen(port, () => {
+        console.log(`Core API listening at http://localhost:${port}`);
+    });
+}
 
 export { server };
 

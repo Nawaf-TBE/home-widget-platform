@@ -1,4 +1,4 @@
-import { pool, upsertWidget, getWidget, Widget } from './db';
+import { pool, upsertWidget, getWidget, Widget } from '../src/db';
 
 describe('DB Integration', () => {
     const testWidget: Widget = {
