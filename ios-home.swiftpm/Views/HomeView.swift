@@ -20,21 +20,62 @@ struct HomeView: View {
                         }
                     }
                     
-                    if viewModel.widgets.isEmpty && !viewModel.isLoading {
+                    if let status = viewModel.actionStatus {
+                        Text(status)
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                            .padding(.horizontal)
+                            .padding(.vertical, 8)
+                            .background(Color.blue.opacity(0.15))
+                            .cornerRadius(8)
+                    }
+                    
+                    if viewModel.isLoading && viewModel.widgets.isEmpty {
+                        SkeletonView()
+                            .padding(.top)
+                    } else if viewModel.widgets.isEmpty {
                         Text("No widgets available")
                             .foregroundColor(.secondary)
                             .padding(.top, 50)
-                    }
-                    
-                    ForEach(viewModel.widgets) { widget in
-                        SDRenderer(component: widget.content.root)
+                    } else {
+                        ForEach(viewModel.widgets) { widget in
+                            VStack(alignment: .leading, spacing: 4) {
+                                // Debug Badge
+                                Text("v\(widget.dataVersion ?? 0) • \(widget.servedFrom ?? "?") • \(widget.audienceType):\(widget.audienceId)")
+                                    .font(.system(size: 10, design: .monospaced))
+                                    .foregroundColor(.secondary)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color.black.opacity(0.3))
+                                    .cornerRadius(4)
+                                
+                                SDRenderer(component: widget.content.root)
+                            }
+                        }
                     }
                     
                     Divider().padding(.vertical)
                     
-                    VStack(spacing: 8) {
-                        Button("Check Health") {
-                            Task { await viewModel.checkHealth() }
+                    // Action Buttons
+                    VStack(spacing: 12) {
+                        HStack(spacing: 12) {
+                            Button(action: { Task { await viewModel.saveFirstDeal() } }) {
+                                Label("Save First Deal", systemImage: "heart.fill")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(.green)
+                            
+                            Button(action: { Task { await viewModel.unsaveLastSaved() } }) {
+                                Label("Unsave Last", systemImage: "heart.slash")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(.red)
+                        }
+                        
+                        Button(action: { Task { await viewModel.checkHealth() } }) {
+                            Label("Check Health", systemImage: "heart.text.square")
                         }
                         .buttonStyle(.bordered)
                         
@@ -62,14 +103,6 @@ struct HomeView: View {
                     Button("Logout") { onLogout() }
                 }
                 #endif
-            }
-            .overlay {
-                if viewModel.isLoading {
-                    ProgressView("Tuning your experience...")
-                        .padding()
-                        .background(.ultraThinMaterial)
-                        .cornerRadius(12)
-                }
             }
         }
         .task {

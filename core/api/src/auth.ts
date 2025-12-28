@@ -6,8 +6,8 @@ const JWT_SECRET = process.env.JWT_SECRET || 'platform-secret-2025';
 
 export interface AuthRequest extends Request {
     user?: {
-        id: string;
-        role: string;
+        sub: string;
+        role?: string;
     };
 }
 
@@ -16,12 +16,19 @@ export const authenticateJWT = (req: AuthRequest, res: Response, next: NextFunct
 
     if (authHeader) {
         const token = authHeader.split(' ')[1];
-        jwt.verify(token, JWT_SECRET, (err: VerifyErrors | null, user: JwtPayload | string | undefined) => {
+        jwt.verify(token, JWT_SECRET, (err: VerifyErrors | null, decoded: JwtPayload | string | undefined) => {
             if (err) {
                 return res.sendStatus(403);
             }
 
-            req.user = user as { id: string; role: string };
+            const payload = decoded as { sub?: string; id?: string; role?: string };
+            // Normalize: prefer sub, fall back to id for backwards compatibility
+            const sub = payload?.sub || payload?.id;
+            if (!sub) {
+                return res.sendStatus(403);
+            }
+
+            req.user = { sub, role: payload?.role };
             next();
         });
     } else {

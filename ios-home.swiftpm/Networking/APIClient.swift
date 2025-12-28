@@ -80,4 +80,23 @@ class APIClient {
         
         throw lastError ?? APIError.networkError(NSError(domain: "Networking", code: -1))
     }
+    
+    // For POST requests that don't return JSON body
+    func requestData(_ request: URLRequest) async throws -> Data {
+        let (data, response) = try await session.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.networkError(NSError(domain: "Networking", code: -1))
+        }
+        
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthenticated
+        }
+        
+        if httpResponse.statusCode >= 400 {
+            throw APIError.serverError(httpResponse.statusCode)
+        }
+        
+        return data
+    }
 }

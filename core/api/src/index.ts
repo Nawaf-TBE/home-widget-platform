@@ -34,7 +34,7 @@ v1Router.post('/widgets/delivery', authenticateJWT, async (req: AuthRequest, res
             return res.status(400).json({ error: 'Invalid keys' });
         }
 
-        const userId = req.user?.id;
+        const userId = req.user?.sub;
         const results: Widget[] = [];
         const cacheMisses: WidgetKey[] = [];
 
@@ -96,13 +96,15 @@ v1Router.get('/home/widgets', authenticateJWT, async (req: AuthRequest, res: Res
     const startTime = Date.now();
     try {
         const platform = (req.query.platform as string) || 'web';
-        const userId = req.user?.id;
+        const userId = req.user?.sub;
 
         if (!userId) return res.sendStatus(401);
 
         // Define which widgets to show on Home
         const homeWidgets = [
-            { product_id: 'deals_app', widget_key: 'top_deals' }
+            { product_id: 'deals_app', widget_key: 'top_deals' },
+            { product_id: 'deals_app', widget_key: 'categories_grid' },
+            { product_id: 'deals_app', widget_key: 'tariffs_section' }
         ];
 
         interface WidgetWithMeta extends Widget {

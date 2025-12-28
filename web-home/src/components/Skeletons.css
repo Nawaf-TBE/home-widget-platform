@@ -1,0 +1,130 @@
+.skeleton-container {
+    padding: 16px;
+    background: #f9f9f9;
+    border-radius: 12px;
+    margin-bottom: 16px;
+}
+
+.skeleton-header {
+    margin-bottom: 12px;
+}
+
+.skeleton-title {
+    height: 20px;
+    width: 60%;
+    background: #e0e0e0;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    animation: pulse 1.5s infinite ease-in-out;
+}
+
+.skeleton-subtitle {
+    height: 14px;
+    width: 40%;
+    background: #e0e0e0;
+    border-radius: 4px;
+    animation: pulse 1.5s infinite ease-in-out;
+    animation-delay: 0.2s;
+}
+
+/* Grid */
+.skeleton-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+/* Card */
+.skeleton-card {
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    padding-bottom: 8px;
+    border: 1px solid #eee;
+}
+
+.skeleton-image {
+    width: 100%;
+    aspect-ratio: 16/9;
+    background: #e0e0e0;
+    animation: pulse 1.5s infinite ease-in-out;
+}
+
+.skeleton-text {
+    height: 12px;
+    background: #e0e0e0;
+    margin: 8px 8px 0;
+    border-radius: 4px;
+    animation: pulse 1.5s infinite ease-in-out;
+}
+
+.line-1 {
+    width: 80%;
+}
+
+.line-2 {
+    width: 40%;
+}
+
+/* Carousel */
+.skeleton-carousel {
+    display: flex;
+    overflow-x: hidden;
+    gap: 12px;
+}
+
+.skeleton-carousel .skeleton-card {
+    min-width: 140px;
+    width: 140px;
+}
+
+/* List / Tariff */
+.skeleton-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.skeleton-tariff {
+    display: flex;
+    align-items: center;
+    background: white;
+    padding: 12px;
+    border-radius: 8px;
+    gap: 12px;
+    border: 1px solid #eee;
+}
+
+.skeleton-circle {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #e0e0e0;
+    animation: pulse 1.5s infinite ease-in-out;
+}
+
+.skeleton-content {
+    flex: 1;
+}
+
+.skeleton-price {
+    width: 60px;
+    height: 24px;
+    background: #e0e0e0;
+    border-radius: 4px;
+    animation: pulse 1.5s infinite ease-in-out;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}

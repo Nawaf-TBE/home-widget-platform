@@ -1,8 +1,10 @@
 import React from 'react';
 import {
     WidgetContainer, TextRow, ActionButton, SectionHeader,
-    DealCard, HorizontalCarousel, Grid, SDUIComponent, Padding
+    DealCard, HorizontalCarousel, Grid, SDUIComponent, Padding,
+    TariffTile as TariffTileType, ListComponent
 } from '../types';
+import { TariffTile } from './TariffTile';
 
 interface SDComponentProps {
     component: SDUIComponent;
@@ -75,7 +77,9 @@ const SDDealCard: React.FC<{ component: DealCard }> = ({ component }) => {
                 {component.category && <p className="sdui-deal-category">{component.category}</p>}
                 <h4 className="sdui-deal-title">{component.title}</h4>
                 <div className="sdui-deal-prices">
-                    <span className="sdui-deal-price">${component.price.toFixed(2)}</span>
+                    {component.price !== undefined && (
+                        <span className="sdui-deal-price">${component.price.toFixed(2)}</span>
+                    )}
                     {component.original_price && (
                         <span className="sdui-deal-original-price">${component.original_price.toFixed(2)}</span>
                     )}
@@ -84,6 +88,26 @@ const SDDealCard: React.FC<{ component: DealCard }> = ({ component }) => {
         </div>
     );
 };
+
+const SDTariffTile: React.FC<{ component: TariffTileType }> = ({ component }) => (
+    <TariffTile
+        data_gb={component.data_gb}
+        price_per_month={component.price_per_month}
+        compare_count={component.compare_count}
+        badge_text={component.badge_text}
+        deeplink={component.deeplink}
+        padding={component.padding}
+    />
+);
+
+const SDList: React.FC<{ component: ListComponent }> = ({ component }) => (
+    <div className="sdui-list-container" style={toPaddingStyle(component.padding)}>
+        {component.items.map((item, idx) => (
+            /* Currently defaulting to TariffTile as it's the only list item supported */
+            <SDTariffTile key={idx} component={item} />
+        ))}
+    </div>
+);
 
 const SDHorizontalCarousel: React.FC<{ component: HorizontalCarousel }> = ({ component }) => (
     <div className="sdui-carousel" style={toPaddingStyle(component.padding)}>
@@ -136,6 +160,10 @@ const SDRenderComponent: React.FC<SDComponentProps> = ({ component }) => {
             return <SDHorizontalCarousel component={component as HorizontalCarousel} />;
         case 'grid':
             return <SDGrid component={component as Grid} />;
+        case 'tariff_tile':
+            return <SDTariffTile component={component as TariffTileType} />;
+        case 'list':
+            return <SDList component={component as ListComponent} />;
         default:
             console.warn(`Unknown SDUI component type: ${component.type}`);
             return null;

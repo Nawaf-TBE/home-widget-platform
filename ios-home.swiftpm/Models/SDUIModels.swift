@@ -8,6 +8,9 @@ struct SDUIWidget: Codable, Identifiable {
     let audienceId: String
     let widgetKey: String
     let content: SDUIContent
+    let dataVersion: Int?
+    let servedFrom: String?
+    let widgetUpdatedAt: String?
     
     enum CodingKeys: String, CodingKey {
         case productId = "product_id"
@@ -16,6 +19,9 @@ struct SDUIWidget: Codable, Identifiable {
         case audienceId = "audience_id"
         case widgetKey = "widget_key"
         case content
+        case dataVersion = "data_version"
+        case servedFrom = "served_from"
+        case widgetUpdatedAt = "widget_updated_at"
     }
 }
 
@@ -61,6 +67,11 @@ struct SDUIComponent: Codable {
     // grid
     let columns: Int?
     
+    // tariff_tile
+    let dataGb: Int?
+    let pricePerMonth: Double?
+    let compareCount: Int?
+    
     enum CodingKeys: String, CodingKey {
         case type, title, text, label, deeplink, items, padding
         case subtitle, icon, category
@@ -69,5 +80,10 @@ struct SDUIComponent: Codable {
         case originalPrice = "original_price"
         case badgeText = "badge_text"
         case columns
+        
+        // tariff_tile
+        case dataGb = "data_gb"
+        case pricePerMonth = "price_per_month"
+        case compareCount = "compare_count"
     }
 }

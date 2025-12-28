@@ -50,10 +50,24 @@ export interface Grid extends SDUIComponent {
     items: DealCard[];
 }
 
+export interface TariffTile extends SDUIComponent {
+    type: 'tariff_tile';
+    data_gb: number;
+    price_per_month: number;
+    compare_count: number;
+    badge_text?: string;
+    deeplink: string;
+}
+
+export interface ListComponent extends SDUIComponent {
+    type: 'list';
+    items: TariffTile[];
+}
+
 export interface WidgetContainer extends SDUIComponent {
     type: 'widget_container';
     title?: string;
-    items: (TextRow | ActionButton | SectionHeader | DealCard | HorizontalCarousel | Grid | SDUIComponent)[];
+    items: (TextRow | ActionButton | SectionHeader | DealCard | HorizontalCarousel | Grid | TariffTile | ListComponent | SDUIComponent)[];
 }
 
 export interface WidgetData {

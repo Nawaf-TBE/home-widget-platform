@@ -294,3 +294,75 @@ button:active {
   gap: 1rem;
   margin-bottom: 1rem;
 }
+
+/* Debug Badge */
+.debug-badge {
+  font-size: 0.65rem;
+  font-family: monospace;
+  color: var(--text-dim);
+  background: rgba(0, 0, 0, 0.3);
+  padding: 4px 8px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  display: inline-block;
+}
+
+.widget-wrapper {
+  margin-bottom: 1rem;
+}
+
+/* Action Status */
+.action-status {
+  background: rgba(0, 122, 255, 0.15);
+  color: var(--primary);
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+}
+
+/* Action Buttons */
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 1.5rem;
+}
+
+.action-btn {
+  flex: 1;
+  min-width: 120px;
+  padding: 0.75rem 1rem;
+  font-size: 0.8rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.2s, background 0.2s;
+}
+
+.save-btn {
+  background: linear-gradient(135deg, #4ade80, #22c55e);
+  color: #000;
+  border: none;
+}
+
+.unsave-btn {
+  background: linear-gradient(135deg, #f87171, #ef4444);
+  color: #fff;
+  border: none;
+}
+
+.refresh-btn {
+  background: var(--card-bg);
+  color: var(--text);
+  border: 1px solid var(--glass-border);
+}
+
+.action-btn:hover {
+  transform: translateY(-2px);
+}
+
+.sdui-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}

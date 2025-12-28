@@ -71,6 +71,12 @@
                 },
                 {
                     "$ref": "#/definitions/grid"
+                },
+                {
+                    "$ref": "#/definitions/list"
+                },
+                {
+                    "$ref": "#/definitions/tariff_tile"
                 }
             ]
         },
@@ -179,7 +185,6 @@
                 "type",
                 "title",
                 "image_url",
-                "price",
                 "deeplink"
             ],
             "additionalProperties": false,
@@ -268,6 +273,68 @@
                     "items": {
                         "$ref": "#/definitions/deal_card"
                     }
+                }
+            }
+        },
+        "list": {
+            "type": "object",
+            "required": [
+                "type",
+                "items"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "const": "list"
+                },
+                "padding": {
+                    "$ref": "#/definitions/padding"
+                },
+                "items": {
+                    "type": "array",
+                    "maxItems": 12,
+                    "items": {
+                        "$ref": "#/definitions/component"
+                    }
+                }
+            }
+        },
+        "tariff_tile": {
+            "type": "object",
+            "required": [
+                "type",
+                "data_gb",
+                "price_per_month",
+                "compare_count",
+                "deeplink"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "const": "tariff_tile"
+                },
+                "data_gb": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1000
+                },
+                "price_per_month": {
+                    "type": "number",
+                    "minimum": 0
+                },
+                "compare_count": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "deeplink": {
+                    "type": "string"
+                },
+                "badge_text": {
+                    "type": "string",
+                    "maxLength": 120
+                },
+                "padding": {
+                    "$ref": "#/definitions/padding"
                 }
             }
         }

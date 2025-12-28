@@ -19,6 +19,12 @@ router.post('/auth/login', (req, res) => {
     res.json({ token });
 });
 
+// Get Current User Identity
+router.get('/me', authenticateJWT, (req, res) => {
+    const userId = (req as AuthenticatedRequest).user!.sub;
+    res.json({ userId });
+});
+
 // List Deals
 router.get('/deals', async (req, res) => {
     try {
@@ -38,6 +44,10 @@ interface DealRow {
     category?: string;
     image_url?: string;
     badge_text?: string;
+    kind: 'deal' | 'category_tile' | 'tariff';
+    data_gb?: number;
+    price_per_month?: number;
+    compare_count?: number;
 }
 
 const createDealCard = (deal: DealRow) => ({
@@ -45,20 +55,37 @@ const createDealCard = (deal: DealRow) => ({
     title: deal.title,
     category: deal.category || 'Deals',
     image_url: deal.image_url || `https://picsum.photos/seed/${deal.id}/200`,
-    price: parseFloat(String(deal.price)),
+    price: parseFloat(String(deal.price || 0)),
     ...(deal.original_price ? { original_price: parseFloat(String(deal.original_price)) } : {}),
     ...(deal.badge_text ? { badge_text: deal.badge_text } : {}),
     deeplink: `app://deals/${deal.id}`
+});
+
+const createCategoryTile = (deal: DealRow) => ({
+    type: 'deal_card',
+    title: deal.title,
+    image_url: deal.image_url || `https://picsum.photos/seed/${deal.id}/200`,
+    deeplink: `app://category/${deal.title.toLowerCase()}`,
+    ...(deal.badge_text ? { badge_text: deal.badge_text } : {})
+});
+
+const createTariffTile = (deal: DealRow) => ({
+    type: 'tariff_tile',
+    data_gb: deal.data_gb || 0,
+    price_per_month: parseFloat(String(deal.price_per_month || 0)),
+    compare_count: deal.compare_count || 3,
+    deeplink: `app://tariff/${deal.id}`,
+    ...(deal.badge_text ? { badge_text: deal.badge_text } : {})
 });
 
 // Helper: Generate personalized snapshot with DealCards
 const generatePersonalizedSnapshot = async (userId: string, layoutVariant: 'carousel' | 'grid') => {
     // Get Saved Deals
     const savedRes = await query(`
-        SELECT d.id, d.title, d.price, d.original_price, d.category, d.image_url, d.badge_text
+        SELECT d.*
         FROM saved_deals s
         JOIN deals d ON s.deal_id = d.id
-        WHERE s.user_id = $1
+        WHERE s.user_id = $1 AND d.kind = 'deal'
         ORDER BY s.created_at DESC
         LIMIT 12
     `, [userId]);
@@ -84,26 +111,22 @@ const generatePersonalizedSnapshot = async (userId: string, layoutVariant: 'caro
     return root;
 };
 
-// Helper: Generate default snapshot with OPPOSITE layout
-const generateDefaultSnapshot = async (layoutVariant: 'carousel' | 'grid') => {
-    // Get featured deals (first 4 deals as "featured")
+// Helper: Generate default top_deals snapshot
+const generateTopDealsSnapshot = async (layoutVariant: 'carousel' | 'grid') => {
     const dealsRes = await query(`
-        SELECT id, title, price, original_price, category, image_url, badge_text
-        FROM deals
+        SELECT * FROM deals
+        WHERE kind = 'deal'
         ORDER BY created_at DESC
         LIMIT 4
     `);
 
     const dealCards = dealsRes.rows.map((d: DealRow) => createDealCard(d));
-
-    // Default uses OPPOSITE layout of personalized
     const oppositeLayout = layoutVariant === 'carousel' ? 'grid' : 'carousel';
-
     const layoutComponent = oppositeLayout === 'grid'
         ? { type: 'grid', columns: 2, items: dealCards }
         : { type: 'horizontal_carousel', items: dealCards };
 
-    const root = {
+    return {
         type: 'widget_container',
         title: 'Top Deals',
         padding: { top: 16, right: 16, bottom: 16, left: 16 },
@@ -113,15 +136,53 @@ const generateDefaultSnapshot = async (layoutVariant: 'carousel' | 'grid') => {
             { type: 'action_button', label: 'Browse All Deals', deeplink: 'app://deals' }
         ]
     };
+};
 
-    return root;
+// Helper: Generate categories_grid snapshot
+const generateCategoriesSnapshot = async () => {
+    const res = await query(`
+        SELECT * FROM deals WHERE kind = 'category_tile' LIMIT 4
+    `);
+
+    const items = res.rows.map((d: DealRow) => createCategoryTile(d));
+
+    return {
+        type: 'widget_container',
+        title: 'Categories',
+        padding: { top: 16, right: 16, bottom: 16, left: 16 },
+        items: [
+            { type: 'section_header', title: 'Browse Categories' },
+            { type: 'grid', columns: 2, items },
+            { type: 'action_button', label: 'Discover all offers', deeplink: 'app://categories' }
+        ]
+    };
+};
+
+// Helper: Generate tariffs_section snapshot
+const generateTariffsSnapshot = async () => {
+    const res = await query(`
+        SELECT * FROM deals WHERE kind = 'tariff' LIMIT 3
+    `);
+
+    const items = res.rows.map((d: DealRow) => createTariffTile(d));
+
+    return {
+        type: 'widget_container',
+        title: 'Tariffs',
+        padding: { top: 16, right: 16, bottom: 16, left: 16 },
+        items: [
+            { type: 'section_header', title: 'SIM Tariffs', subtitle: 'Compare offers' },
+            { type: 'list', items },
+            { type: 'action_button', label: 'Compare tariffs', deeplink: 'app://tariffs' }
+        ]
+    };
 };
 
 const WIDGET_KEY = 'top_deals';
 
 // Save Deal
 router.post('/deals/:id/save', authenticateJWT, async (req, res) => {
-    const userId = (req as AuthenticatedRequest).user!.id;
+    const userId = (req as AuthenticatedRequest).user!.sub;
     const dealId = req.params.id;
 
     const client = await pool.connect();
@@ -147,7 +208,7 @@ router.post('/deals/:id/save', authenticateJWT, async (req, res) => {
         // 3. Generate Snapshot with DealCards
         const rootContent = await generatePersonalizedSnapshot(userId, LAYOUT_VARIANT);
 
-        // 4. Outbox Insert - Web
+        // 4. Outbox Insert - Web & iOS
         const eventWeb = {
             event_id: crypto.randomUUID(),
             product_id: 'deals_app',
@@ -158,20 +219,9 @@ router.post('/deals/:id/save', authenticateJWT, async (req, res) => {
             schema_version: 2,
             data_version: newVersion,
             min_ios_version: 1,
-            content: {
-                schema_version: 2,
-                data_version: newVersion,
-                root: rootContent
-            }
+            content: { schema_version: 2, data_version: newVersion, root: rootContent }
         };
-
-        // 4. Outbox Insert - iOS
-        const eventIOS = {
-            ...eventWeb,
-            event_id: crypto.randomUUID(),
-            platform: 'ios',
-            min_ios_version: 16
-        };
+        const eventIOS = { ...eventWeb, event_id: crypto.randomUUID(), platform: 'ios', min_ios_version: 16 };
 
         const EVENT_TYPE = 'WIDGET_SNAPSHOT_UPSERT';
         await client.query(
@@ -180,12 +230,11 @@ router.post('/deals/:id/save', authenticateJWT, async (req, res) => {
         );
 
         await client.query('COMMIT');
-        console.log(`[ProductAPI] user=${userId} action=save deal=${dealId} new_data_version=${newVersion}`);
         res.sendStatus(200);
 
     } catch (err) {
         await client.query('ROLLBACK');
-        console.error(`[ProductAPI] save_failed user=${userId} deal=${dealId} error=${err instanceof Error ? err.message : String(err)}`);
+        console.error(err);
         res.status(500).json({ error: 'Transaction failed' });
     } finally {
         client.release();
@@ -194,7 +243,7 @@ router.post('/deals/:id/save', authenticateJWT, async (req, res) => {
 
 // Unsave Deal
 router.post('/deals/:id/unsave', authenticateJWT, async (req, res) => {
-    const userId = (req as AuthenticatedRequest).user!.id;
+    const userId = (req as AuthenticatedRequest).user!.sub;
     const dealId = req.params.id;
 
     const client = await pool.connect();
@@ -231,19 +280,9 @@ router.post('/deals/:id/unsave', authenticateJWT, async (req, res) => {
             schema_version: 2,
             data_version: newVersion,
             min_ios_version: 1,
-            content: {
-                schema_version: 2,
-                data_version: newVersion,
-                root: rootContent
-            }
+            content: { schema_version: 2, data_version: newVersion, root: rootContent }
         };
-
-        const eventIOS = {
-            ...eventWeb,
-            event_id: crypto.randomUUID(),
-            platform: 'ios',
-            min_ios_version: 16
-        };
+        const eventIOS = { ...eventWeb, event_id: crypto.randomUUID(), platform: 'ios', min_ios_version: 16 };
 
         const EVENT_TYPE = 'WIDGET_SNAPSHOT_UPSERT';
         await client.query(
@@ -252,68 +291,128 @@ router.post('/deals/:id/unsave', authenticateJWT, async (req, res) => {
         );
 
         await client.query('COMMIT');
-        console.log(`[ProductAPI] user=${userId} action=unsave deal=${dealId} new_data_version=${newVersion}`);
         res.sendStatus(200);
 
     } catch (err) {
         await client.query('ROLLBACK');
-        console.error(`[ProductAPI] unsave_failed user=${userId} deal=${dealId} error=${err instanceof Error ? err.message : String(err)}`);
+        console.error(err);
         res.status(500).json({ error: 'Transaction failed' });
     } finally {
         client.release();
     }
 });
 
-// Admin Publish Default - uses OPPOSITE layout of personalized
+// Admin Seed: Populate Categories and Tariffs
+router.post('/admin/seed', async (_req, res) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        // Define Categories
+        const categories = [
+            { title: 'Electronics', imageUrl: 'https://picsum.photos/seed/elec/200', badge: 'Top Picks' },
+            { title: 'Furniture', imageUrl: 'https://picsum.photos/seed/furn/200' },
+            { title: 'Travel', imageUrl: 'https://picsum.photos/seed/trav/200', badge: 'Summer' },
+            { title: 'Insurance', imageUrl: 'https://picsum.photos/seed/ins/200' }
+        ];
+
+        for (const cat of categories) {
+            // Use 0 as fallback price, default other fields
+            await client.query(`
+                 INSERT INTO deals (id, title, price, image_url, badge_text, kind)
+                 VALUES ($1, $2, 0, $3, $4, 'category_tile')
+                 ON CONFLICT (id) DO UPDATE SET kind = 'category_tile'
+             `, [crypto.randomUUID(), cat.title, cat.imageUrl, cat.badge]);
+        }
+
+        // Define Tariffs
+        const tariffs = [
+            { id: crypto.randomUUID(), data: 5, price: 9.99, compare: 12 },
+            { id: crypto.randomUUID(), data: 10, price: 14.99, compare: 8, badge: 'Best Value' },
+            { id: crypto.randomUUID(), data: 50, price: 29.99, compare: 5 }
+        ];
+
+        for (const t of tariffs) {
+            await client.query(`
+                INSERT INTO deals (id, title, price, data_gb, price_per_month, compare_count, badge_text, kind)
+                VALUES ($1, 'Tariff', 0, $2, $3, $4, $5, 'tariff')
+                ON CONFLICT (id) DO UPDATE SET kind = 'tariff'
+            `, [t.id, t.data, t.price, t.compare, t.badge]);
+        }
+
+        await client.query('COMMIT');
+        res.sendStatus(200);
+    } catch (e) {
+        await client.query('ROLLBACK');
+        console.error(e);
+        res.status(500).json({ error: 'Seeding failed' });
+    } finally {
+        client.release();
+    }
+});
+
+// Admin Publish Default - publishes ALL default widgets
 router.post('/admin/publish-default', async (_req, res) => {
     try {
-        // Generate default content with OPPOSITE layout
-        const defaultContent = await generateDefaultSnapshot(LAYOUT_VARIANT);
-
-        // Use timestamp as data_version to ensure updates always take effect
         const dataVersion = Math.floor(Date.now() / 1000);
-
-        const eventWeb = {
-            event_id: crypto.randomUUID(),
-            product_id: 'deals_app',
-            platform: 'web',
-            audience_type: 'default',
-            audience_id: 'global',
-            widget_key: WIDGET_KEY,
-            schema_version: 2,
-            data_version: dataVersion,
-            min_ios_version: 1,
-            content: {
-                schema_version: 2,
-                data_version: dataVersion,
-                root: defaultContent
-            }
-        };
-
-        const eventIOS = {
-            ...eventWeb,
-            event_id: crypto.randomUUID(),
-            platform: 'ios',
-            min_ios_version: 16
-        };
-
         const EVENT_TYPE = 'WIDGET_SNAPSHOT_UPSERT';
 
-        // Insert to Outbox
-        await query(
-            'INSERT INTO outbox (aggregate_id, event_type, payload) VALUES ($1, $2, $3), ($4, $5, $6)',
-            ['default', EVENT_TYPE, JSON.stringify(eventWeb), 'default', EVENT_TYPE, JSON.stringify(eventIOS)]
-        );
-        res.sendStatus(200);
+        const widgets = [];
+
+        // 1. Top Deals
+        const topDeals = await generateTopDealsSnapshot(LAYOUT_VARIANT);
+        widgets.push({ key: 'top_deals', content: topDeals });
+
+        // 2. Categories
+        const categories = await generateCategoriesSnapshot();
+        widgets.push({ key: 'categories_grid', content: categories });
+
+        // 3. Tariffs
+        const tariffs = await generateTariffsSnapshot();
+        widgets.push({ key: 'tariffs_section', content: tariffs });
+
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+
+            for (const w of widgets) {
+                const eventWeb = {
+                    event_id: crypto.randomUUID(),
+                    product_id: 'deals_app',
+                    platform: 'web',
+                    audience_type: 'default',
+                    audience_id: 'global',
+                    widget_key: w.key,
+                    schema_version: 2,
+                    data_version: dataVersion,
+                    min_ios_version: 1,
+                    content: { schema_version: 2, data_version: dataVersion, root: w.content }
+                };
+                const eventIOS = { ...eventWeb, event_id: crypto.randomUUID(), platform: 'ios', min_ios_version: 16 };
+
+                await client.query(
+                    'INSERT INTO outbox (aggregate_id, event_type, payload) VALUES ($1, $2, $3), ($4, $5, $6)',
+                    ['default', EVENT_TYPE, JSON.stringify(eventWeb), 'default', EVENT_TYPE, JSON.stringify(eventIOS)]
+                );
+            }
+
+            await client.query('COMMIT');
+            res.sendStatus(200);
+        } catch (e) {
+            await client.query('ROLLBACK');
+            throw e;
+        } finally {
+            client.release();
+        }
     } catch (err) {
         console.error(err);
-        res.status(500).json({ error: 'Failed to publish default' });
+        res.status(500).json({ error: 'Failed to publish defaults' });
     }
 });
 
 // List Saved Deals
 router.get('/me/saved', authenticateJWT, async (req, res) => {
-    const userId = (req as AuthenticatedRequest).user!.id;
+    const userId = (req as AuthenticatedRequest).user!.sub;
     try {
         const result = await query(`
             SELECT d.* 
