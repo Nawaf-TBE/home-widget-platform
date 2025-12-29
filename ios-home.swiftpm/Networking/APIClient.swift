@@ -99,4 +99,18 @@ class APIClient {
         
         return data
     }
+
+    func fetch<T: Decodable>(endpoint: String, token: String?) async throws -> T {
+        guard let url = URL(string: endpoint) else {
+            throw APIError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        if let token = token {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        
+        return try await self.request(request)
+    }
 }

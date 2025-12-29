@@ -208,6 +208,11 @@
                     "type": "number",
                     "minimum": 0
                 },
+                "currency": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 3
+                },
                 "original_price": {
                     "type": "number",
                     "minimum": 0
@@ -321,6 +326,11 @@
                 "price_per_month": {
                     "type": "number",
                     "minimum": 0
+                },
+                "currency": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 3
                 },
                 "compare_count": {
                     "type": "integer",

@@ -132,4 +132,32 @@ describe('Home Widgets Aggregation Hardening', () => {
         // The tie-break in SELECT is mainly for audience_type (user > default).
         // However, updated_at DESC and data_version DESC are still good to have in ORDER BY for safety.
     });
+
+    test('REGRESSION: Restore Home Feed - GIVEN multiple distinct widgets, THEN all are returned', async () => {
+        const platform = 'web';
+        const userId = 'user-1';
+
+        // 1. Seed 3 distinct widgets
+        const keys = ['section_a', 'section_b', 'section_c'];
+        for (const key of keys) {
+            await upsertWidget({
+                product_id: 'deals_app',
+                platform,
+                audience_type: 'default',
+                audience_id: 'global',
+                widget_key: key,
+                content: { title: `Title ${key}` },
+                schema_version: 1,
+                data_version: 1
+            });
+        }
+
+        // 2. Fetch widgets
+        const results = await getHomeWidgets(['deals_app'], platform, userId);
+
+        // 3. Verify all 3 returned
+        expect(results).toHaveLength(3);
+        const returnedKeys = results.map(r => r.widget_key).sort();
+        expect(returnedKeys).toEqual(keys);
+    });
 });

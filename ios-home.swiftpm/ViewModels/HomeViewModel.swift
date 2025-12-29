@@ -14,7 +14,7 @@ class HomeViewModel: ObservableObject {
     @Published var actionStatus: String?
     
     private let client = APIClient()
-    private let jwt: String
+    let jwt: String
     
     init(jwt: String) {
         self.jwt = jwt

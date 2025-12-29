@@ -63,6 +63,7 @@ struct SDUIComponent: Codable {
     let price: Double?
     let originalPrice: Double?
     let badgeText: String?
+    let currency: String? // Added currency
     
     // grid
     let columns: Int?
@@ -79,6 +80,7 @@ struct SDUIComponent: Codable {
         case price
         case originalPrice = "original_price"
         case badgeText = "badge_text"
+        case currency
         case columns
         
         // tariff_tile

@@ -100,7 +100,8 @@ v1Router.get('/home/widgets', authenticateJWT, async (req: AuthRequest, res: Res
         if (!userId) return res.sendStatus(401);
 
         // Generic discovery: Fetch all widgets for this user/platform
-        const widgets = await getHomeWidgets('deals_app', platform, userId);
+        // Include 'check24' to get the other widgets (e.g. w1)
+        const widgets = await getHomeWidgets(['deals_app', 'check24'], platform, userId);
 
         // Map to standard response format with metadata
         const results = widgets.map((w: Widget) => ({

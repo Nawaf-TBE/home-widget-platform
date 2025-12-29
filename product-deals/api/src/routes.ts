@@ -28,7 +28,33 @@ router.get('/me', authenticateJWT, (req, res) => {
 // List Deals
 router.get('/deals', async (req, res) => {
     try {
-        const result = await query('SELECT * FROM deals ORDER BY created_at DESC');
+        const { kind, limit } = req.query;
+        let queryText = 'SELECT * FROM deals';
+        const params: any[] = [];
+
+        if (kind) {
+            queryText += ' WHERE kind = $1';
+            params.push(kind);
+        }
+
+        queryText += ' ORDER BY created_at DESC';
+
+        if (limit) {
+            queryText += ` LIMIT $${params.length + 1}`;
+            params.push(limit);
+        }
+
+        const result = await query(queryText, params);
+        res.json(result.rows);
+    } catch {
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+// List Tariffs
+router.get('/tariffs', async (req, res) => {
+    try {
+        const result = await query("SELECT * FROM deals WHERE kind = 'tariff' ORDER BY created_at DESC");
         res.json(result.rows);
     } catch {
         res.status(500).json({ error: 'Database error' });
@@ -48,6 +74,7 @@ interface DealRow {
     data_gb?: number;
     price_per_month?: number;
     compare_count?: number;
+    currency?: string;
 }
 
 const createDealCard = (deal: DealRow) => ({
@@ -55,26 +82,27 @@ const createDealCard = (deal: DealRow) => ({
     title: deal.title,
     category: deal.category || 'Deals',
     image_url: deal.image_url || `https://picsum.photos/seed/${deal.id}/200`,
-    price: parseFloat(String(deal.price || 0)),
-    ...(deal.original_price ? { original_price: parseFloat(String(deal.original_price)) } : {}),
+    // Only return price if > 0
+    ...(Number(deal.price) > 0 ? { price: Number(deal.price), currency: deal.currency || 'EUR' } : {}),
+    ...(Number(deal.original_price) > 0 ? { original_price: Number(deal.original_price) } : {}),
     ...(deal.badge_text ? { badge_text: deal.badge_text } : {}),
-    deeplink: `app://deals/${deal.id}`
+    deeplink: `/deals/${deal.id}`
 });
 
 const createCategoryTile = (deal: DealRow) => ({
     type: 'deal_card',
     title: deal.title,
     image_url: deal.image_url || `https://picsum.photos/seed/${deal.id}/200`,
-    deeplink: `app://category/${deal.title.toLowerCase()}`,
+    deeplink: `/category/${deal.title.toLowerCase()}`,
     ...(deal.badge_text ? { badge_text: deal.badge_text } : {})
 });
 
 const createTariffTile = (deal: DealRow) => ({
     type: 'tariff_tile',
     data_gb: Math.max(1, deal.data_gb || 1),
-    price_per_month: parseFloat(String(deal.price_per_month || 0)),
+    ...(Number(deal.price_per_month) > 0 ? { price_per_month: Number(deal.price_per_month), currency: 'EUR' } : {}),
     compare_count: deal.compare_count || 3,
-    deeplink: `app://tariff/${deal.id}`,
+    deeplink: `/tariffs`, // Specific tariff linking not fully supported yet, fallback to list
     ...(deal.badge_text ? { badge_text: deal.badge_text } : {})
 });
 
@@ -104,7 +132,7 @@ const generatePersonalizedSnapshot = async (userId: string, layoutVariant: 'caro
         items: [
             { type: 'section_header', title: '❤️ Your Saved Top-Deals', subtitle: 'Personalized for you' },
             layoutComponent,
-            { type: 'action_button', label: 'View All Saved', deeplink: 'app://me/saved' }
+            { type: 'action_button', label: 'View All Saved', deeplink: '/saved' }
         ]
     };
 
@@ -133,7 +161,7 @@ const generateTopDealsSnapshot = async (layoutVariant: 'carousel' | 'grid') => {
         items: [
             { type: 'section_header', title: '🔥 Featured Deals', subtitle: 'Best offers of the day' },
             layoutComponent,
-            { type: 'action_button', label: 'Browse All Deals', deeplink: 'app://deals' }
+            { type: 'action_button', label: 'Browse All Deals', deeplink: '/deals' }
         ]
     };
 };
@@ -153,7 +181,7 @@ const generateCategoriesSnapshot = async () => {
         items: [
             { type: 'section_header', title: 'Browse Categories' },
             { type: 'grid', columns: 2, items },
-            { type: 'action_button', label: 'Discover all offers', deeplink: 'app://categories' }
+            { type: 'action_button', label: 'Discover all offers', deeplink: '/categories' }
         ]
     };
 };
@@ -173,7 +201,7 @@ const generateTariffsSnapshot = async () => {
         items: [
             { type: 'section_header', title: 'SIM Tariffs', subtitle: 'Compare offers' },
             { type: 'list', items },
-            { type: 'action_button', label: 'Compare tariffs', deeplink: 'app://tariffs' }
+            { type: 'action_button', label: 'Compare tariffs', deeplink: '/tariffs' }
         ]
     };
 };
@@ -188,6 +216,18 @@ router.post('/deals/:id/save', authenticateJWT, async (req, res) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
+
+        // 0. Validate Deal Kind
+        const kindRes = await client.query('SELECT kind FROM deals WHERE id = $1', [dealId]);
+        if (kindRes.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: 'Deal not found' });
+        }
+        const kind = kindRes.rows[0].kind;
+        if (!['deal', 'tariff'].includes(kind)) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'Item is not saveable' });
+        }
 
         // 1. Insert Saved Deal
         await client.query(
@@ -325,6 +365,20 @@ router.post('/admin/seed', async (_req, res) => {
              `, [crypto.randomUUID(), cat.title, cat.imageUrl, cat.badge]);
         }
 
+        const deals = [
+            { id: crypto.randomUUID(), title: 'iPhone 15', price: 799.99, imageUrl: 'https://images.unsplash.com/photo-1695048133142-1a20484d2569', badge: 'New' },
+            { id: crypto.randomUUID(), title: 'Dyson V15', price: 599.99, imageUrl: 'https://images.unsplash.com/photo-1558317374-a359d2439327' },
+            { id: crypto.randomUUID(), title: 'MacBook Air', price: 1099.00, imageUrl: 'https://images.unsplash.com/photo-1611186871348-1847e6bb7c8c', badge: 'Best Seller' },
+        ];
+
+        for (const d of deals) {
+            await client.query(`
+                INSERT INTO deals (id, title, price, image_url, badge_text, kind)
+                VALUES ($1, $2, $3, $4, $5, 'deal')
+                ON CONFLICT (id) DO UPDATE SET kind = 'deal', price = $3, image_url = $4
+            `, [d.id, d.title, d.price, d.imageUrl, d.badge]);
+        }
+
         // Define Tariffs
         const tariffs = [
             { id: crypto.randomUUID(), data: 5, price: 9.99, compare: 12 },
@@ -418,9 +472,18 @@ router.get('/me/saved', authenticateJWT, async (req, res) => {
             SELECT d.* 
             FROM saved_deals s
             JOIN deals d ON s.deal_id = d.id
-            WHERE s.user_id = $1
+            WHERE s.user_id = $1 AND d.kind IN ('deal', 'tariff')
         `, [userId]);
-        res.json(result.rows);
+
+        // Sanitize prices: 0 or null becomes null
+        const sanitized = result.rows.map(row => ({
+            ...row,
+            price: (Number(row.price) > 0) ? Number(row.price) : null,
+            currency: 'EUR', // Default currency for saved items
+            original_price: (Number(row.original_price) > 0) ? Number(row.original_price) : null
+        }));
+
+        res.json(sanitized);
     } catch {
         res.status(500).json({ error: 'Database error' });
     }

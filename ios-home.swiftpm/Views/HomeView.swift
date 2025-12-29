@@ -4,8 +4,10 @@ struct HomeView: View {
     @StateObject var viewModel: HomeViewModel
     let onLogout: () -> Void
     
+    @State private var path = NavigationPath()
+    
     var body: some View {
-        NavigationView {
+        NavigationStack(path: $path) {
             ScrollView {
                 VStack(spacing: 20) {
                     if let error = viewModel.errorMessage {
@@ -49,14 +51,26 @@ struct HomeView: View {
                                     .background(Color.black.opacity(0.3))
                                     .cornerRadius(4)
                                 
-                                SDRenderer(component: widget.content.root)
+                                SDRenderer(component: widget.content.root) { deeplink in
+                                    if let dest = DeeplinkRouter.destination(for: deeplink) {
+                                        print("[SDUI] navigating to \(dest) currentPathCount=\(path.count)")
+                                        path.append(dest)
+                                        print("[SDUI] pathCountAfter=\(path.count)")
+                                    } else {
+                                        viewModel.actionStatus = "Unsupported: \(deeplink)"
+                                        // Clear after 3s
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                                            viewModel.actionStatus = nil
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
                     
                     Divider().padding(.vertical)
                     
-                    // Action Buttons
+                    // Action Buttons (Hardcoded ones)
                     VStack(spacing: 12) {
                         HStack(spacing: 12) {
                             Button(action: { Task { await viewModel.saveFirstDeal() } }) {
@@ -90,6 +104,14 @@ struct HomeView: View {
                 .padding()
             }
             .navigationTitle("Home")
+            .navigationDestination(for: HomeDestination.self) { dest in
+                switch dest {
+                case .saved:
+                    SavedView(jwt: viewModel.jwt)
+                case .tariffs:
+                    TariffsView()
+                }
+            }
             .refreshable {
                 await viewModel.fetchWidgets()
             }

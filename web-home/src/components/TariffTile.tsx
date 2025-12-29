@@ -15,6 +15,7 @@ interface TariffTileProps {
     badge_text?: string;
     deeplink: string;
     padding?: Padding;
+    onAction?: (action: string) => void;
 }
 
 export const TariffTile: React.FC<TariffTileProps> = ({
@@ -23,7 +24,8 @@ export const TariffTile: React.FC<TariffTileProps> = ({
     compare_count,
     badge_text,
     deeplink,
-    padding
+    padding,
+    onAction
 }) => {
     const style: React.CSSProperties = {
         paddingTop: padding?.top ? `${padding.top}px` : undefined,
@@ -34,7 +36,7 @@ export const TariffTile: React.FC<TariffTileProps> = ({
 
     const handleClick = () => {
         console.log(`Navigating to: ${deeplink}`);
-        // In a real app, use router or window.location
+        if (onAction) onAction(deeplink);
     };
 
     return (

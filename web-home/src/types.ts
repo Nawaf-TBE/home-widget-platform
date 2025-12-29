@@ -33,9 +33,10 @@ export interface DealCard extends SDUIComponent {
     title: string;
     category?: string;
     image_url: string;
-    price: number;
+    price?: number;
     original_price?: number;
     badge_text?: string;
+    currency?: string; // Added currency field
     deeplink: string;
 }
 

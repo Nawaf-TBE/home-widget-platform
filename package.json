@@ -5,7 +5,7 @@
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
     "test:unit": "pnpm -r --workspace-concurrency=1 --filter !@home-widget-platform/integration --filter !@home-widget-platform/resilience test",
-    "test:integration": "pnpm --filter @home-widget-platform/integration test",
+    "test:integration": "pnpm --filter @home-widget-platform/integration test:integration",
     "test:resilience": "pnpm --filter @home-widget-platform/resilience test",
     "test:all": "pnpm test:unit && pnpm test:integration && pnpm test:resilience",
     "run:resilience:product": "pnpm --filter @home-widget-platform/resilience run test -- product-down.test.ts",

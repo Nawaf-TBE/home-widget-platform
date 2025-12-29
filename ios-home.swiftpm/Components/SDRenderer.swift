@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SDRenderer: View {
     let component: SDUIComponent
+    var onAction: ((String) -> Void)?
     
     @ViewBuilder
     var body: some View {
@@ -16,7 +17,7 @@ struct SDRenderer: View {
                 
                 if let items = component.items {
                     ForEach(0..<items.count, id: \.self) { index in
-                        SDRenderer(component: items[index])
+                        SDRenderer(component: items[index], onAction: onAction)
                     }
                 }
             }
@@ -34,6 +35,7 @@ struct SDRenderer: View {
         case "action_button":
             if let label = component.label {
                 Button(action: {
+                    print("[SDUI] action_button tapped label=\(label) deeplink=\(component.deeplink)")
                     handleDeeplink(component.deeplink)
                 }) {
                     Text(label)
@@ -68,14 +70,14 @@ struct SDRenderer: View {
             .padding(edgeInsets(from: component.padding))
             
         case "deal_card":
-            DealCardView(component: component)
+            DealCardView(component: component, onAction: onAction)
             
         case "horizontal_carousel":
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
                     if let items = component.items {
                         ForEach(0..<items.count, id: \.self) { index in
-                            DealCardView(component: items[index])
+                            DealCardView(component: items[index], onAction: onAction)
                                 .frame(width: 160)
                         }
                     }
@@ -89,7 +91,7 @@ struct SDRenderer: View {
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: columns), spacing: 12) {
                 if let items = component.items {
                     ForEach(0..<items.count, id: \.self) { index in
-                        DealCardView(component: items[index])
+                        DealCardView(component: items[index], onAction: onAction)
                     }
                 }
             }
@@ -102,7 +104,7 @@ struct SDRenderer: View {
             if let items = component.items {
                 VStack(spacing: 8) {
                     ForEach(0..<items.count, id: \.self) { index in
-                        SDRenderer(component: items[index])
+                        SDRenderer(component: items[index], onAction: onAction)
                     }
                 }
                 .padding(edgeInsets(from: component.padding))
@@ -128,6 +130,7 @@ struct SDRenderer: View {
     private func handleDeeplink(_ deeplink: String?) {
         guard let deeplink = deeplink else { return }
         print("[DEEPLINK] \(deeplink)")
+        onAction?(deeplink)
         
         if let url = URL(string: deeplink) {
             #if os(iOS)
@@ -143,10 +146,13 @@ struct SDRenderer: View {
 
 struct DealCardView: View {
     let component: SDUIComponent
+    var onAction: ((String) -> Void)?
     
     var body: some View {
         Button(action: {
-             // Handle action if any
+             if let link = component.deeplink {
+                 onAction?(link)
+             }
         }) {
             VStack(alignment: .leading, spacing: 0) {
                 // Image with badge
@@ -217,8 +223,10 @@ struct DealCardView: View {
                     }
                     
                     HStack(spacing: 6) {
-                        if let price = component.price {
-                            Text(String(format: "$%.2f", price))
+                        if let price = component.price, price > 0 {
+                            let currency = component.currency ?? "EUR"
+                            let symbol = currency == "USD" ? "$" : "€"
+                            Text(String(format: "\(symbol)%.2f", price))
                                 .font(.subheadline)
                                 .fontWeight(.bold)
                                 .foregroundColor(.green)
