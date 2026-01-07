@@ -83,3 +83,12 @@ export interface WidgetData {
         root: WidgetContainer;
     };
 }
+
+export interface WidgetWithMeta extends WidgetData {
+    data_version: number;
+    served_from: 'redis' | 'db';
+    served_at: string;
+    widget_updated_at?: string;
+    audience_type: string;
+    audience_id: string;
+}

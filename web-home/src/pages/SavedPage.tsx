@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SDRenderer } from '../components/SDRenderer';
+import { WidgetContainer } from '../types';
 import { dispatchDeeplink } from '../navigation/dispatch';
 
 interface SavedDeal {
@@ -60,7 +61,7 @@ export const SavedPage = () => {
     };
 
     // Transform logic: SavedDeals -> SDUI Grid
-    const gridWidget = {
+    const gridWidget: WidgetContainer = {
         type: 'widget_container',
         title: 'Your Saved Deals',
         padding: { top: 16, right: 16, bottom: 16, left: 16 },
@@ -71,7 +72,7 @@ export const SavedPage = () => {
                 items: deals.map(deal => ({
                     type: 'deal_card',
                     title: deal.title,
-                    image_url: deal.image_url || undefined, // Handle null
+                    image_url: deal.image_url || '', // Handle null - fixed to match types
                     price: deal.price,
                     original_price: deal.original_price,
                     currency: deal.currency,
@@ -80,7 +81,7 @@ export const SavedPage = () => {
                 }))
             }
         ]
-    } as const;
+    };
 
     return (
         <div className="saved-page" style={{ paddingBottom: '2rem', background: '#050505', minHeight: '100vh' }}>
